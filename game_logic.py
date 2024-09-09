@@ -1,4 +1,4 @@
-from common import Game, SCREEN_SIZE, GRID_SIZE, BOARD_SIZE
+from common import Game, SCREEN_SIZE, GRID_SIZE, BOARD_SIZE, MARGIN
 from ui import main_menu, game_mode_selection, network_mode_selection, show_winner_popup, draw_board, draw_stones
 from network import start_network_game
 from ai import ai_move
@@ -55,16 +55,15 @@ def play_game(game, mode, network_mode=None):
                 return "quit"
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 x, y = event.pos
-                col = round((x - GRID_SIZE) / GRID_SIZE)
-                row = round((y - GRID_SIZE) / GRID_SIZE)
+                col = round((x - MARGIN) / GRID_SIZE)
+                row = round((y - MARGIN) / GRID_SIZE)
                 
-                if 0 <= row < BOARD_SIZE - 1 and 0 <= col < BOARD_SIZE - 1:
-                    if game.is_valid_move(row, col):
-                        if game.update_board(row, col):
-                            if network_mode:
-                                network.send_move(row, col)
-                            elif mode == "AI" and not game.is_over():
-                                ai_move(game)
+                if game.is_valid_move(row, col):
+                    if game.update_board(row, col):
+                        if network_mode:
+                            network.send_move(row, col)
+                        elif mode == "AI" and not game.is_over():
+                            ai_move(game)
 
 def game_loop():
     """游戏主循环"""

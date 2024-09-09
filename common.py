@@ -1,7 +1,8 @@
 # 定义一些基本参数
 GRID_SIZE = 40
 BOARD_SIZE = 15
-SCREEN_SIZE = GRID_SIZE * BOARD_SIZE
+MARGIN = GRID_SIZE  # 添加边距
+SCREEN_SIZE = GRID_SIZE * (BOARD_SIZE + 1)  # 增加屏幕大小，为边距留出空间
 
 class Game:
     def __init__(self):
@@ -75,4 +76,4 @@ class Game:
         return {"status": "error", "message": "Invalid data"}
 
     def is_valid_move(self, row, col):
-        return 0 <= row < BOARD_SIZE - 1 and 0 <= col < BOARD_SIZE - 1 and self.board[row][col] is None
+        return 0 <= row < BOARD_SIZE and 0 <= col < BOARD_SIZE and self.board[row][col] is None
