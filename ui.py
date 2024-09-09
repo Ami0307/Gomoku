@@ -16,6 +16,7 @@ GRID_SIZE = 40
 BOARD_SIZE = 15
 SCREEN_SIZE = GRID_SIZE * BOARD_SIZE
 
+
 def draw_board(screen):
     """绘制棋盘"""
     screen.fill(WHITE)
