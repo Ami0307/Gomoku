@@ -18,7 +18,6 @@
    pip install -r requirements.txt
    ```
 
-# Borui comes
 
 ## 运行游戏
 
