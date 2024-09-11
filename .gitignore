@@ -1,0 +1,60 @@
+# 忽略编译后的 Python 文件
+__pycache__/
+*.py[cod]
+*$py.class
+
+# 忽略 C 扩展
+*.so
+
+# 忽略分发/打包文件夹
+dist/
+build/
+*.egg-info/
+
+# 忽略 PyInstaller 生成的文件
+*.manifest
+*.spec
+
+# 忽略安装日志
+pip-log.txt
+pip-delete-this-directory.txt
+
+# 忽略单元测试/覆盖率报告
+htmlcov/
+.tox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+.pytest_cache/
+
+# 忽略 Jupyter Notebook
+.ipynb_checkpoints
+
+# 忽略环境文件
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# 忽略 Spyder 项目设置
+.spyderproject
+.spyproject
+
+# 忽略 Rope 项目设置
+.ropeproject
+
+# 忽略 mypy 缓存
+.mypy_cache/
+
+# 忽略 macOS 系统文件
+.DS_Store
+
+# 忽略 VS Code 设置
+.vscode/

@@ -1,6 +1,6 @@
 import pygame
 import sys
-from common import Game
+from common import Game, SCREEN_SIZE, GRID_SIZE, BOARD_SIZE, MARGIN
 from network import start_network_game
 from ai import ai_move
 
@@ -11,25 +11,26 @@ LIGHT_GRAY = (240, 240, 240)
 DARK_GRAY = (200, 200, 200)
 BLUE = (0, 0, 255)
 
-# 定义一些基本参数
-GRID_SIZE = 40
-BOARD_SIZE = 15
-SCREEN_SIZE = GRID_SIZE * BOARD_SIZE
+
+
 
 def draw_board(screen):
     """绘制棋盘"""
     screen.fill(WHITE)
     for i in range(BOARD_SIZE):
         # 画横线
-        pygame.draw.line(screen, DARK_GRAY, (GRID_SIZE, GRID_SIZE * (i + 1)),
-                         (SCREEN_SIZE - GRID_SIZE, GRID_SIZE * (i + 1)), 1)
+        pygame.draw.line(screen, DARK_GRAY, 
+                         (MARGIN, MARGIN + i * GRID_SIZE),
+                         (MARGIN + (BOARD_SIZE - 1) * GRID_SIZE, MARGIN + i * GRID_SIZE), 1)
         # 画竖线
-        pygame.draw.line(screen, DARK_GRAY, (GRID_SIZE * (i + 1), GRID_SIZE),
-                         (GRID_SIZE * (i + 1), SCREEN_SIZE - GRID_SIZE), 1)
+        pygame.draw.line(screen, DARK_GRAY, 
+                         (MARGIN + i * GRID_SIZE, MARGIN),
+                         (MARGIN + i * GRID_SIZE, MARGIN + (BOARD_SIZE - 1) * GRID_SIZE), 1)
     
     # 画边框
-    pygame.draw.rect(screen, DARK_GRAY, (GRID_SIZE, GRID_SIZE, 
-                     SCREEN_SIZE - 2 * GRID_SIZE, SCREEN_SIZE - 2 * GRID_SIZE), 2)
+    pygame.draw.rect(screen, DARK_GRAY, 
+                     (MARGIN, MARGIN, 
+                      (BOARD_SIZE - 1) * GRID_SIZE, (BOARD_SIZE - 1) * GRID_SIZE), 2)
 
 def draw_stones(screen, game):
     """绘制棋子"""

@@ -1,4 +1,5 @@
 import random
+from common import Game, SCREEN_SIZE, GRID_SIZE, BOARD_SIZE, MARGIN
 
 def ai_move(game):
     print("AI 正在思考...")
@@ -17,9 +18,9 @@ def ai_move(game):
         return game.update_board(*blocking_move)
     
     # 如果没有紧急情况，评估所有可能的移动
-    for i in range(15):
-        for j in range(15):
-            if game.board[i][j] is None:
+    for i in range(BOARD_SIZE):
+        for j in range(BOARD_SIZE):
+            if game.is_valid_move(i, j):
                 score = evaluate_move(game, i, j)
                 if score > best_score:
                     best_score = score
@@ -34,9 +35,9 @@ def ai_move(game):
         print("AI 没有可用的移动")
 
 def find_winning_move(game, player):
-    for i in range(15):
-        for j in range(15):
-            if game.board[i][j] is None:
+    for i in range(BOARD_SIZE):
+        for j in range(BOARD_SIZE):
+            if game.is_valid_move(i, j):
                 game.board[i][j] = player
                 if game.check_winner(i, j):
                     game.board[i][j] = None
@@ -62,7 +63,7 @@ def get_line(game, row, col, dx, dy, player):
     line = []
     for i in range(-4, 5):
         r, c = row + i*dx, col + i*dy
-        if 0 <= r < 15 and 0 <= c < 15:
+        if 0 <= r < BOARD_SIZE and 0 <= c < BOARD_SIZE:
             if game.board[r][c] == player:
                 line.append(1)
             elif game.board[r][c] is None:
