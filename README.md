@@ -18,7 +18,10 @@
    pip install -r requirements.txt
    ```
 
+# Borui comes
+
 ## 运行游戏
 
 在项目目录下运行以下命令：
 python main.py
+
