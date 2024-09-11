@@ -35,9 +35,9 @@ def ai_move(game):
         print("AI 没有可用的移动")
 
 def find_winning_move(game, player):
-    for i in range(15):
-        for j in range(15):
-            if game.board[i][j] is None:
+    for i in range(BOARD_SIZE):
+        for j in range(BOARD_SIZE):
+            if game.is_valid_move(i, j):
                 game.board[i][j] = player
                 if game.check_winner(i, j):
                     game.board[i][j] = None
@@ -63,7 +63,7 @@ def get_line(game, row, col, dx, dy, player):
     line = []
     for i in range(-4, 5):
         r, c = row + i*dx, col + i*dy
-        if 0 <= r < 15 and 0 <= c < 15:
+        if 0 <= r < BOARD_SIZE and 0 <= c < BOARD_SIZE:
             if game.board[r][c] == player:
                 line.append(1)
             elif game.board[r][c] is None:
