@@ -77,3 +77,10 @@ class Game:
 
     def is_valid_move(self, row, col):
         return 0 <= row < BOARD_SIZE and 0 <= col < BOARD_SIZE and self.board[row][col] is None
+
+    def handle_network_move(self, move_data):
+        if isinstance(move_data, list) and len(move_data) == 2:
+            row, col = move_data
+            if self.is_valid_move(row, col):
+                return self.update_board(row, col)
+        return False

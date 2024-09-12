@@ -1,7 +1,7 @@
 import pygame
 import sys
 from common import Game, SCREEN_SIZE, GRID_SIZE, BOARD_SIZE, MARGIN
-from network import start_network_game, get_available_rooms
+from network import start_network_game, get_available_rooms, start_discovery_service, check_for_new_connection, start_server
 from ai import ai_move
 
 # 定义颜色
@@ -21,16 +21,16 @@ def draw_board(screen):
         # 画横线
         pygame.draw.line(screen, DARK_GRAY, 
                          (MARGIN, MARGIN + i * GRID_SIZE),
-                         (MARGIN + (BOARD_SIZE - 1) * GRID_SIZE, MARGIN + i * GRID_SIZE), 1)
+                         (SCREEN_SIZE - MARGIN, MARGIN + i * GRID_SIZE), 1)
         # 画竖线
         pygame.draw.line(screen, DARK_GRAY, 
                          (MARGIN + i * GRID_SIZE, MARGIN),
-                         (MARGIN + i * GRID_SIZE, MARGIN + (BOARD_SIZE - 1) * GRID_SIZE), 1)
+                         (MARGIN + i * GRID_SIZE, SCREEN_SIZE - MARGIN), 1)
     
     # 画边框
     pygame.draw.rect(screen, DARK_GRAY, 
                      (MARGIN, MARGIN, 
-                      (BOARD_SIZE - 1) * GRID_SIZE, (BOARD_SIZE - 1) * GRID_SIZE), 2)
+                      BOARD_SIZE * GRID_SIZE, BOARD_SIZE * GRID_SIZE), 2)
 
 def draw_stones(screen, game):
     """绘制棋子"""
@@ -156,8 +156,8 @@ def input_port():
 
         pygame.display.flip()
 
-def waiting_room(is_host=False):
-    """等待其他玩家加入的房间界面"""
+def waiting_room(is_host=True, network=None):
+    print(f"Entering waiting room. Is host: {is_host}")
     pygame.init()
     screen = pygame.display.set_mode((SCREEN_SIZE, SCREEN_SIZE))
     pygame.display.set_caption("Waiting Room")
@@ -169,13 +169,15 @@ def waiting_room(is_host=False):
     if is_host:
         start_button = draw_button(screen, "Start Game", SCREEN_SIZE // 4, SCREEN_SIZE * 2 // 3, 250, 50)
 
+    connection_established = network.connected if network else False
+
     while True:
         screen.fill(WHITE)
         text = font.render(message, True, BLACK)
         text_rect = text.get_rect(center=(SCREEN_SIZE // 2, SCREEN_SIZE // 2))
         screen.blit(text, text_rect)
 
-        if is_host:
+        if is_host and connection_established:
             pygame.draw.rect(screen, LIGHT_GRAY, start_button)
             pygame.draw.rect(screen, DARK_GRAY, start_button, 2)
             start_text = font.render("Start Game", True, BLACK)
@@ -186,11 +188,51 @@ def waiting_room(is_host=False):
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
+                if network:
+                    network.close()
                 pygame.quit()
                 sys.exit()
-            if event.type == pygame.MOUSEBUTTONDOWN and is_host:
+            if event.type == pygame.MOUSEBUTTONDOWN and is_host and connection_established:
                 if start_button.collidepoint(event.pos):
-                    return "start"
+                    if network:
+                        network.send({"type": "start_game"})
+                    return network
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+                if network:
+                    network.close()
+                return "main_menu"
+
+        if network:
+            if is_host and not connection_established:
+                client_socket = check_for_new_connection(network.server_socket)
+                if client_socket:
+                    network.client = client_socket  # 设置客户端 socket
+                    connection_established = True
+                    message = "Other player joined. Click 'Start Game' to begin."
+                    print("Client connected.")
+                    network.send({"type": "connection_established"})
+            else:
+                data = network.check_network_move()
+                if data:
+                    print(f"Received data in waiting room: {data}")
+                    if data.get("type") == "connection_established":
+                        print("Connection established")
+                        connection_established = True
+                        message = "Connected to host. Waiting for game to start..."
+                    elif data.get("type") == "start_game":
+                        print("Received start_game signal")
+                        return network
+
+        if not is_host and not connection_established:
+            if not network.connected:
+                connection_established = network.connect()
+            if not connection_established:
+                print("Failed to establish connection with the server.")
+                return "main_menu"
+
+        pygame.time.wait(100)
+
+    return network
 
 def show_available_rooms():
     """显示可用的房间列表"""
@@ -228,7 +270,6 @@ def show_available_rooms():
         pygame.time.wait(100)
 
 def network_mode_selection():
-    """选择网络模式（服务器或客户端）"""
     pygame.init()
     screen = pygame.display.set_mode((SCREEN_SIZE, SCREEN_SIZE))
     pygame.display.set_caption("Gomoku Network Mode Selection")
@@ -247,14 +288,12 @@ def network_mode_selection():
             if event.type == pygame.MOUSEBUTTONDOWN:
                 if create_button.collidepoint(event.pos):
                     port = input_port()
-                    waiting_room(is_host=True)
-                    return "server", port
+                    if port:
+                        return "server", int(port)
                 elif join_button.collidepoint(event.pos):
-                    # 这里需要实现获取可用房间的逻辑
-                    rooms = get_available_rooms()
-                    selected_room = show_available_rooms()
-                    waiting_room(is_host=False)
-                    return "client", selected_room
+                    return "client", None  # Return None for port, we'll get it in show_available_rooms
+
+        pygame.time.wait(100)
 
 def show_winner_popup(screen, winner):
     """显示获胜者弹窗，并提供再来一局、返回主菜单和退出选项"""
