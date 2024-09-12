@@ -60,7 +60,7 @@ def play_game(game, mode, network_mode=None, port=None):
 
             pygame.display.flip()
 
-            if network_mode and game.current_player != game.player_color:
+            if network_mode:
                 move_data = network.check_network_move()
                 if move_data:
                     if isinstance(move_data, list) and len(move_data) == 2:
@@ -72,7 +72,6 @@ def play_game(game, mode, network_mode=None, port=None):
                             print(f"Received invalid move: {move_data}")
                     else:
                         print(f"Received invalid move data format: {move_data}")
-                continue
 
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
@@ -80,11 +79,13 @@ def play_game(game, mode, network_mode=None, port=None):
                         network.close()
                     return "quit"
                 elif event.type == pygame.MOUSEBUTTONDOWN:
+                    if network_mode and game.current_player != game.player_color:
+                        continue  # 如果是网络模式且不是当前玩家的回合，跳过
                     x, y = event.pos
                     col = round((x - MARGIN) / GRID_SIZE)
                     row = round((y - MARGIN) / GRID_SIZE)
                     
-                    if game.is_valid_move(row, col) and game.current_player == game.player_color:
+                    if game.is_valid_move(row, col):
                         if game.update_board(row, col):
                             if network_mode:
                                 network.send_move(row, col)

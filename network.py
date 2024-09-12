@@ -86,15 +86,24 @@ class Network:
 
     def handle_received_data(self, data):
         try:
+            # 去掉多余的引号和反斜杠
+            if data.startswith('"') and data.endswith('"'):
+                data = data[1:-1]
+            data = data.replace('\\', '')
+            
             move_data = json.loads(data)
-            if isinstance(move_data, dict) and "move" in move_data:
-                with self.move_lock:
-                    self.network_move = move_data["move"]
-                print(f"Processed move: {self.network_move}")
+            if isinstance(move_data, dict):
+                if "move" in move_data and isinstance(move_data["move"], list) and len(move_data["move"]) == 2:
+                    with self.move_lock:
+                        self.network_move = move_data["move"]
+                    print(f"Processed move: {self.network_move}")
+                else:
+                    print(f"Received unexpected data format: {move_data}")
             else:
-                print(f"Received unexpected data format: {move_data}")
-        except json.JSONDecodeError:
+                print(f"Received unexpected data type: {type(move_data)}")
+        except json.JSONDecodeError as e:
             print(f"Received invalid JSON data: {data}")
+            print(f"JSON decode error: {e}")
         except Exception as e:
             print(f"Error handling received data: {e}")
 
@@ -107,7 +116,7 @@ class Network:
                 try:
                     ready = select.select([self.client], [], [], 0.1)
                     if ready[0]:
-                        data = self.client.recv(2048).decode()
+                        data = self.client.recv(2048).decode().strip()
                         if not data:
                             print("Client disconnected")
                             break
