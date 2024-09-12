@@ -1,7 +1,7 @@
 import pygame
 import sys
 from common import Game, SCREEN_SIZE, GRID_SIZE, BOARD_SIZE, MARGIN
-from network import start_network_game
+from network import start_network_game, get_available_rooms
 from ai import ai_move
 
 # 定义颜色
@@ -105,16 +105,138 @@ def game_mode_selection():
                 elif player_button.collidepoint(event.pos):
                     return "Player"
 
+def input_port():
+    """让用户输入端口号"""
+    pygame.init()
+    screen = pygame.display.set_mode((SCREEN_SIZE, SCREEN_SIZE))
+    pygame.display.set_caption("Enter Port Number")
+
+    font = pygame.font.SysFont(None, 32)
+    input_box = pygame.Rect(SCREEN_SIZE // 4, SCREEN_SIZE // 2, 250, 32)
+    color_inactive = pygame.Color('lightskyblue3')
+    color_active = pygame.Color('dodgerblue2')
+    color = color_inactive
+    active = False
+    text = ''
+    done = False
+
+    while not done:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                if input_box.collidepoint(event.pos):
+                    active = not active
+                else:
+                    active = False
+                color = color_active if active else color_inactive
+            if event.type == pygame.KEYDOWN:
+                if active:
+                    if event.key == pygame.K_RETURN:
+                        try:
+                            port = int(text)
+                            if 1024 <= port <= 65535:
+                                return port
+                            else:
+                                text = ''
+                        except ValueError:
+                            text = ''
+                    elif event.key == pygame.K_BACKSPACE:
+                        text = text[:-1]
+                    else:
+                        text += event.unicode
+
+        screen.fill(WHITE)
+        txt_surface = font.render(text, True, color)
+        width = max(200, txt_surface.get_width()+10)
+        input_box.w = width
+        screen.blit(txt_surface, (input_box.x+5, input_box.y+5))
+        pygame.draw.rect(screen, color, input_box, 2)
+
+        pygame.display.flip()
+
+def waiting_room(is_host=False):
+    """等待其他玩家加入的房间界面"""
+    pygame.init()
+    screen = pygame.display.set_mode((SCREEN_SIZE, SCREEN_SIZE))
+    pygame.display.set_caption("Waiting Room")
+
+    font = pygame.font.SysFont(None, 32)
+    message = "Waiting for other player to join..." if is_host else "Waiting for host to start the game..."
+    start_button = None
+
+    if is_host:
+        start_button = draw_button(screen, "Start Game", SCREEN_SIZE // 4, SCREEN_SIZE * 2 // 3, 250, 50)
+
+    while True:
+        screen.fill(WHITE)
+        text = font.render(message, True, BLACK)
+        text_rect = text.get_rect(center=(SCREEN_SIZE // 2, SCREEN_SIZE // 2))
+        screen.blit(text, text_rect)
+
+        if is_host:
+            pygame.draw.rect(screen, LIGHT_GRAY, start_button)
+            pygame.draw.rect(screen, DARK_GRAY, start_button, 2)
+            start_text = font.render("Start Game", True, BLACK)
+            start_text_rect = start_text.get_rect(center=start_button.center)
+            screen.blit(start_text, start_text_rect)
+
+        pygame.display.flip()
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+            if event.type == pygame.MOUSEBUTTONDOWN and is_host:
+                if start_button.collidepoint(event.pos):
+                    return "start"
+
+def show_available_rooms():
+    """显示可用的房间列表"""
+    pygame.init()
+    screen = pygame.display.set_mode((SCREEN_SIZE, SCREEN_SIZE))
+    pygame.display.set_caption("Available Rooms")
+
+    font = pygame.font.SysFont(None, 32)
+    room_buttons = []
+
+    available_rooms = get_available_rooms()
+
+    while True:
+        screen.fill(WHITE)
+        text = font.render("Available Rooms", True, BLACK)
+        text_rect = text.get_rect(center=(SCREEN_SIZE // 2, 50))
+        screen.blit(text, text_rect)
+
+        for i, room in enumerate(available_rooms):
+            button = draw_button(screen, f"Room {room['host']}:{room['port']}", SCREEN_SIZE // 4, 100 + i * 60, 250, 50)
+            room_buttons.append((button, room))
+
+        pygame.display.flip()
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                for button, room in room_buttons:
+                    if button.collidepoint(event.pos):
+                        return room['host'], room['port']
+
+        # Add a small delay to reduce CPU usage
+        pygame.time.wait(100)
+
 def network_mode_selection():
     """选择网络模式（服务器或客户端）"""
     pygame.init()
     screen = pygame.display.set_mode((SCREEN_SIZE, SCREEN_SIZE))
     pygame.display.set_caption("Gomoku Network Mode Selection")
 
-    screen.fill(WHITE)  # 设置白色背景
+    screen.fill(WHITE)
 
-    server_button = draw_button(screen, "Create Server", SCREEN_SIZE // 4, SCREEN_SIZE // 3, 250, 50)
-    client_button = draw_button(screen, "Join Game", SCREEN_SIZE // 4, SCREEN_SIZE // 2, 250, 50)
+    create_button = draw_button(screen, "Create Game", SCREEN_SIZE // 4, SCREEN_SIZE // 3, 250, 50)
+    join_button = draw_button(screen, "Join Game", SCREEN_SIZE // 4, SCREEN_SIZE // 2, 250, 50)
 
     while True:
         pygame.display.flip()
@@ -123,10 +245,16 @@ def network_mode_selection():
                 pygame.quit()
                 sys.exit()
             if event.type == pygame.MOUSEBUTTONDOWN:
-                if server_button.collidepoint(event.pos):
-                    return "server"
-                elif client_button.collidepoint(event.pos):
-                    return "client"
+                if create_button.collidepoint(event.pos):
+                    port = input_port()
+                    waiting_room(is_host=True)
+                    return "server", port
+                elif join_button.collidepoint(event.pos):
+                    # 这里需要实现获取可用房间的逻辑
+                    rooms = get_available_rooms()
+                    selected_room = show_available_rooms()
+                    waiting_room(is_host=False)
+                    return "client", selected_room
 
 def show_winner_popup(screen, winner):
     """显示获胜者弹窗，并提供再来一局、返回主菜单和退出选项"""
