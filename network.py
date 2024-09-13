@@ -9,6 +9,20 @@ DISCOVERY_MESSAGE = "GOMOKU_GAME_DISCOVERY"
 RESPONSE_MESSAGE = "GOMOKU_GAME_RESPONSE"
 DISCOVERY_RUNNING = False
 
+def get_local_ip():
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+        sock.sendto(b"DISCOVER", ('<broadcast>', BROADCAST_PORT))
+        sock.settimeout(2)
+        _, addr = sock.recvfrom(1024)
+        return addr[0]
+    except Exception as e:
+        print(f"Error getting local IP: {e}")
+        return socket.gethostbyname(socket.gethostname())
+    finally:
+        sock.close()
+
 class Network:
     def __init__(self, host, port):
         self.host = host
@@ -20,7 +34,7 @@ class Network:
         self.move_lock = threading.Lock()
         self.network_move = None
         self.running = True
-        print(f"Using IP address: {socket.gethostbyname(socket.gethostname())}")
+        print(f"Using IP address: {get_local_ip()}")
 
     def connect(self):
         if self.connected:
@@ -162,10 +176,10 @@ def start_server(host, port, game_instance):
     global server_socket, DISCOVERY_RUNNING
     try:
         server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        server_socket.bind((socket.gethostbyname(socket.gethostname()), port))
+        server_socket.bind((get_local_ip(), port))
         server_socket.listen(1)
         server_socket.setblocking(False)
-        print(f"Server started on {socket.gethostbyname(socket.gethostname())}:{port}")
+        print(f"Server started on {get_local_ip()}:{port}")
         print("Waiting for client connection...")
 
         network = Network(host, port)
@@ -195,7 +209,7 @@ def broadcast_server_info(host, port):
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
     try:
-        actual_ip = socket.gethostbyname(socket.gethostname())
+        actual_ip = get_local_ip()
         message = f"GOMOKU_SERVER:{json.dumps({'host': actual_ip, 'port': port})}"
         sock.sendto(message.encode(), ('<broadcast>', BROADCAST_PORT))
         print(f"Broadcasted server info: {message}")
@@ -257,8 +271,10 @@ def start_discovery_service(port):
         try:
             data, addr = sock.recvfrom(1024)
             print(f"Discovery service received data from {addr}")
-            if data.decode() == DISCOVERY_MESSAGE:
-                response = f"{RESPONSE_MESSAGE}:{json.dumps({'host': socket.gethostbyname(socket.gethostname()), 'port': port})}"
+            if data.decode() == "DISCOVER":
+                sock.sendto(b"DISCOVER_RESPONSE", addr)
+            elif data.decode() == DISCOVERY_MESSAGE:
+                response = f"{RESPONSE_MESSAGE}:{json.dumps({'host': get_local_ip(), 'port': port})}"
                 sock.sendto(response.encode(), addr)
                 print(f"Discovery service sent response to {addr}")
         except Exception as e:
