@@ -20,6 +20,7 @@ class Network:
         self.move_lock = threading.Lock()
         self.network_move = None
         self.running = True
+        print(f"Using IP address: {socket.gethostbyname(socket.gethostname())}")
 
     def connect(self):
         if self.connected:
@@ -161,10 +162,10 @@ def start_server(host, port, game_instance):
     global server_socket, DISCOVERY_RUNNING
     try:
         server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        server_socket.bind(("0.0.0.0", port))
+        server_socket.bind((socket.gethostbyname(socket.gethostname()), port))
         server_socket.listen(1)
         server_socket.setblocking(False)
-        print(f"Server started on 0.0.0.0:{port}")
+        print(f"Server started on {socket.gethostbyname(socket.gethostname())}:{port}")
         print("Waiting for client connection...")
 
         network = Network(host, port)
