@@ -30,19 +30,21 @@ def play_game(game, mode, network_mode=None, port=None):
 
     network = None
     if network_mode:
-        if network_mode == "server":
-            # 首先启动服务器
-            network, game = start_network_game(game, network_mode, port=port)
-            if network:
-                # 然后进入等待室
-                network = waiting_room(is_host=True, network=network)
-        else:
-            network, game = start_network_game(game, network_mode, port=port)
-            if network:
-                network = waiting_room(is_host=False, network=network)
-
+        network, game = start_network_game(game, network_mode, port=port)
+        if not network:
+            return "main_menu"
+        network = waiting_room(is_host=(network_mode == "server"), network=network)
         if not network or network == "main_menu":
             return "main_menu"
+        
+        # 停止所有现有线程
+        network.stop_receive_thread()
+        
+
+        network.start_server_receive_thread()
+
+        
+        game.player_color = 'Black' if network_mode == "server" else 'White'
 
     clock = pygame.time.Clock()
 
@@ -61,7 +63,7 @@ def play_game(game, mode, network_mode=None, port=None):
             pygame.display.flip()
 
             if network_mode:
-                move_data = network.check_network_move()
+                move_data = network.check_network_data()
                 if move_data:
                     if isinstance(move_data, list) and len(move_data) == 2:
                         row, col = move_data
@@ -80,6 +82,7 @@ def play_game(game, mode, network_mode=None, port=None):
                     return "quit"
                 elif event.type == pygame.MOUSEBUTTONDOWN:
                     if network_mode and game.current_player != game.player_color:
+                        print("Not your turn", game.current_player, game.player_color)
                         continue  # 如果是网络模式且不是当前玩家的回合，跳过
                     x, y = event.pos
                     col = round((x - MARGIN) / GRID_SIZE)

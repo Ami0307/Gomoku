@@ -212,16 +212,17 @@ def waiting_room(is_host=True, network=None):
                     print("Client connected.")
                     network.send({"type": "connection_established"})
             else:
-                data = network.check_network_move()
+                data = network.check_network_data()
                 if data:
                     print(f"Received data in waiting room: {data}")
-                    if data.get("type") == "connection_established":
-                        print("Connection established")
-                        connection_established = True
-                        message = "Connected to host. Waiting for game to start..."
-                    elif data.get("type") == "start_game":
-                        print("Received start_game signal")
-                        return network
+                    if isinstance(data, dict):
+                        if data.get("type") == "connection_established":
+                            print("Connection established")
+                            connection_established = True
+                            message = "Connected to host. Waiting for game to start..."
+                        elif data.get("type") == "start_game":
+                            print("Received start_game signal")
+                            return network
 
         if not is_host and not connection_established:
             if not network.connected:

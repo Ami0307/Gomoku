@@ -63,11 +63,11 @@ class Network:
         move_data = json.dumps({"move": [row, col]})
         self.send(move_data)
 
-    def check_network_move(self):
+    def check_network_data(self):
         with self.move_lock:
-            move = self.network_move
+            data = self.network_move
             self.network_move = None
-        return move
+        return data
 
     def receive_move_thread(self):
         while True:
@@ -75,10 +75,8 @@ class Network:
                 data = self.client.recv(2048).decode()
                 if not data:
                     break
-                move_data = json.loads(data)
-                print(f"Received data: {move_data}")
-                with self.move_lock:
-                    self.network_move = move_data
+                print(f"Received raw data: {data}")
+                self.handle_received_data(data)
             except Exception as e:
                 print(f"Error in receive thread: {e}")
                 break
@@ -86,21 +84,29 @@ class Network:
 
     def handle_received_data(self, data):
         try:
-            # 去掉多余的引号和反斜杠
             if data.startswith('"') and data.endswith('"'):
                 data = data[1:-1]
             data = data.replace('\\', '')
             
-            move_data = json.loads(data)
-            if isinstance(move_data, dict):
-                if "move" in move_data and isinstance(move_data["move"], list) and len(move_data["move"]) == 2:
+            parsed_data = json.loads(data)
+            if isinstance(parsed_data, dict):
+                if "type" in parsed_data:
+                    # 处理控制消息
+                    print(f"Received control message: {parsed_data}")
                     with self.move_lock:
-                        self.network_move = move_data["move"]
-                    print(f"Processed move: {self.network_move}")
+                        self.network_move = parsed_data
+                elif "move" in parsed_data:
+                    # 处理移动消息
+                    if isinstance(parsed_data["move"], list) and len(parsed_data["move"]) == 2:
+                        with self.move_lock:
+                            self.network_move = parsed_data["move"]
+                        print(f"Processed move: {self.network_move}")
+                    else:
+                        print(f"Received invalid move format: {parsed_data}")
                 else:
-                    print(f"Received unexpected data format: {move_data}")
+                    print(f"Received unexpected data format: {parsed_data}")
             else:
-                print(f"Received unexpected data type: {type(move_data)}")
+                print(f"Received unexpected data type: {type(parsed_data)}")
         except json.JSONDecodeError as e:
             print(f"Received invalid JSON data: {data}")
             print(f"JSON decode error: {e}")
@@ -108,32 +114,48 @@ class Network:
             print(f"Error handling received data: {e}")
 
     def start_server_receive_thread(self):
-        threading.Thread(target=self.server_receive_thread, daemon=True).start()
+        self.running = True
+        self.server_receive_thread = threading.Thread(target=self.server_receive_thread_func, daemon=True)
+        self.server_receive_thread.start()
 
-    def server_receive_thread(self):
+    def server_receive_thread_func(self):
         while self.running:
-            if self.client:
-                try:
+            try:
+                if self.client:  # 对于服务器端，这是连接的客户端
                     ready = select.select([self.client], [], [], 0.1)
                     if ready[0]:
                         data = self.client.recv(2048).decode().strip()
                         if not data:
                             print("Client disconnected")
                             break
-                        print(f"Server received data: {data}")
+                        print(f"Received data: {data}")
                         self.handle_received_data(data)
-                except json.JSONDecodeError:
-                    print("Received invalid JSON data")
-                except ConnectionResetError:
-                    print("Connection reset by client")
+                elif self.connected:  # 对于客户端，我们直接使用self
+                    ready = select.select([self.client], [], [], 0.1)
+                    if ready[0]:
+                        data = self.client.recv(2048).decode().strip()
+                        if not data:
+                            print("Disconnected from server")
+                            break
+                        print(f"Received data: {data}")
+                        self.handle_received_data(data)
+            except Exception as e:
+                print(f"Error in server receive thread: {e}")
+                if not self.running:
                     break
-                except Exception as e:
-                    print(f"Error in server receive thread: {e}")
-                    if not self.running:
-                        break
-            else:
-                time.sleep(0.1)
         print("Server receive thread ended")
+
+    def stop_receive_thread(self):
+        self.running = False
+        if hasattr(self, 'receive_thread') and isinstance(self.receive_thread, threading.Thread):
+            self.receive_thread.join(timeout=1)
+        if hasattr(self, 'server_receive_thread') and isinstance(self.server_receive_thread, threading.Thread):
+            self.server_receive_thread.join(timeout=1)
+
+    def start_receive_thread(self):
+        self.running = True
+        self.receive_thread = threading.Thread(target=self.receive_move_thread, daemon=True)
+        self.receive_thread.start()
 
 def start_server(host, port, game_instance):
     global server_socket, DISCOVERY_RUNNING
@@ -162,7 +184,7 @@ def start_server(host, port, game_instance):
 
         # 启动服务端接收线程
         network.start_server_receive_thread()
-
+        game_instance.player_color = 'White'
         return network, game_instance
     except Exception as e:
         print(f"Failed to start server: {e}")
@@ -187,14 +209,14 @@ def start_client(host, port, game_instance):
     network = Network(host, port)
     try:
         if network.connect():
-            print(f"Connected to server at {host}:{port}")
-            threading.Thread(target=network.receive_move_thread, daemon=True).start()
-            game_instance.player_color = "Black"
+            print(f"已连接到服务器 {host}:{port}")
+            network.start_receive_thread()
+            game_instance.player_color = "White"
             return network, game_instance
         else:
-            print(f"Failed to connect to server at {host}:{port}")
+            print(f"无法连接到服务器 {host}:{port}")
     except Exception as e:
-        print(f"Error connecting to server: {e}")
+        print(f"连接服务器时出错: {e}")
     return None, game_instance
 
 def start_network_game(game, mode, host='localhost', port=12345):
