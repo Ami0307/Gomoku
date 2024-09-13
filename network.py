@@ -9,17 +9,48 @@ DISCOVERY_MESSAGE = "GOMOKU_GAME_DISCOVERY"
 RESPONSE_MESSAGE = "GOMOKU_GAME_RESPONSE"
 DISCOVERY_RUNNING = False
 
+# 添加一个全局变量来存储本地 IP
+_local_ip = None
+_local_ip_lock = threading.Lock()
+
 def get_local_ip():
+    global _local_ip
+    
+    with _local_ip_lock:
+        if _local_ip is not None:
+            return _local_ip
+
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     try:
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
         sock.sendto(b"DISCOVER", ('<broadcast>', BROADCAST_PORT))
         sock.settimeout(2)
-        _, addr = sock.recvfrom(1024)
-        return addr[0]
+        
+        start_time = time.time()
+        while time.time() - start_time < 5:  # 等待最多5秒
+            try:
+                data, (ip, _) = sock.recvfrom(1024)
+                if data == b"DISCOVER_RESPONSE" and not ip.startswith('127.'):
+                    with _local_ip_lock:
+                        if _local_ip is None:
+                            _local_ip = ip
+                    return _local_ip
+            except socket.timeout:
+                continue
+        
+        # 如果没有收到响应，回退到使用 socket.gethostbyname
+        fallback_ip = socket.gethostbyname(socket.gethostname())
+        with _local_ip_lock:
+            if _local_ip is None:
+                _local_ip = fallback_ip
+        return _local_ip
     except Exception as e:
         print(f"Error getting local IP: {e}")
-        return socket.gethostbyname(socket.gethostname())
+        fallback_ip = socket.gethostbyname(socket.gethostname())
+        with _local_ip_lock:
+            if _local_ip is None:
+                _local_ip = fallback_ip
+        return _local_ip
     finally:
         sock.close()
 
@@ -176,13 +207,14 @@ def start_server(host, port, game_instance):
     global server_socket, DISCOVERY_RUNNING
     try:
         server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        server_socket.bind((get_local_ip(), port))
+        local_ip = get_local_ip()
+        server_socket.bind((local_ip, port))
         server_socket.listen(1)
         server_socket.setblocking(False)
-        print(f"Server started on {get_local_ip()}:{port}")
+        print(f"Server started on {local_ip}:{port}")
         print("Waiting for client connection...")
 
-        network = Network(host, port)
+        network = Network(local_ip, port)
         network.server_socket = server_socket
 
         # 启动发现服务
@@ -195,11 +227,11 @@ def start_server(host, port, game_instance):
             print("Discovery service is already running.")
 
         # 主动广播服务器信息
-        broadcast_server_info(host, port)
+        broadcast_server_info(local_ip, port)
 
         # 启动服务端接收线程
         network.start_server_receive_thread()
-        game_instance.player_color = 'White'
+        game_instance.player_color = 'Black'
         return network, game_instance
     except Exception as e:
         print(f"Failed to start server: {e}")
@@ -253,7 +285,6 @@ def start_discovery_service(port):
     if DISCOVERY_RUNNING:
         print("Discovery service is already running.")
         return
-
     DISCOVERY_RUNNING = True
     print(f"Setting up discovery service on port {BROADCAST_PORT}")
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -271,7 +302,7 @@ def start_discovery_service(port):
         try:
             data, addr = sock.recvfrom(1024)
             print(f"Discovery service received data from {addr}")
-            if data.decode() == "DISCOVER":
+            if data == b"DISCOVER":
                 sock.sendto(b"DISCOVER_RESPONSE", addr)
             elif data.decode() == DISCOVERY_MESSAGE:
                 response = f"{RESPONSE_MESSAGE}:{json.dumps({'host': get_local_ip(), 'port': port})}"
