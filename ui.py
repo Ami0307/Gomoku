@@ -107,52 +107,63 @@ def game_mode_selection():
 
 def input_port():
     """让用户输入端口号"""
-    pygame.init()
     screen = pygame.display.set_mode((SCREEN_SIZE, SCREEN_SIZE))
-    pygame.display.set_caption("Enter Port Number")
+    pygame.display.set_caption("输入端口号")
 
     font = pygame.font.SysFont(None, 32)
     input_box = pygame.Rect(SCREEN_SIZE // 4, SCREEN_SIZE // 2, 250, 32)
     color_inactive = pygame.Color('lightskyblue3')
     color_active = pygame.Color('dodgerblue2')
-    color = color_inactive
-    active = False
+    color = color_active  # 默认激活输入框
+    active = True
     text = ''
-    done = False
+    error_message = ''
 
-    while not done:
+    while True:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
                 sys.exit()
-            if event.type == pygame.MOUSEBUTTONDOWN:
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                # 点击输入框时激活，否则不激活
                 if input_box.collidepoint(event.pos):
-                    active = not active
+                    active = True
+                    color = color_active
                 else:
                     active = False
-                color = color_active if active else color_inactive
-            if event.type == pygame.KEYDOWN:
+                    color = color_inactive
+            elif event.type == pygame.KEYDOWN:
                 if active:
                     if event.key == pygame.K_RETURN:
                         try:
                             port = int(text)
                             if 1024 <= port <= 65535:
+                                print(f"输入的端口号: {port}")  # 调试信息
                                 return port
                             else:
+                                error_message = "端口号必须在1024到65535之间。"
                                 text = ''
                         except ValueError:
+                            error_message = "请输入有效的端口号。"
                             text = ''
                     elif event.key == pygame.K_BACKSPACE:
                         text = text[:-1]
-                    else:
+                    elif event.unicode.isdigit():
                         text += event.unicode
 
         screen.fill(WHITE)
+
+        # 渲染输入文本
         txt_surface = font.render(text, True, color)
-        width = max(200, txt_surface.get_width()+10)
+        width = max(200, txt_surface.get_width() + 10)
         input_box.w = width
-        screen.blit(txt_surface, (input_box.x+5, input_box.y+5))
+        screen.blit(txt_surface, (input_box.x + 5, input_box.y + 5))
         pygame.draw.rect(screen, color, input_box, 2)
+
+        # 显示错误消息
+        if error_message:
+            error_surface = font.render(error_message, True, (255, 0, 0))
+            screen.blit(error_surface, (input_box.x, input_box.y + 40))
 
         pygame.display.flip()
 

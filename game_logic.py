@@ -12,10 +12,9 @@ def start_game_ui():
         mode = game_mode_selection()
         return mode, None, None
     elif game_mode == "network":
-        network_mode, _ = network_mode_selection()
+        network_mode, port = network_mode_selection()  # 获取 port
         if network_mode == "server":
-            port = input_port()
-            return "Player", network_mode, port
+            return "Player", network_mode, port  # 使用已获取的 port
         else:
             host, port = show_available_rooms()
             return "Player", "client", (host, port)
