@@ -10,11 +10,13 @@ class Game:
         self.current_player = 'Black'
         self.winner = None
         self.player_color = None
+        self.move_history = []
 
     def update_board(self, row, col):
         """更新棋盘状态"""
         if self.board[row][col] is None:
             self.board[row][col] = self.current_player
+            self.move_history.append((row, col))
             if self.check_winner(row, col):
                 self.winner = self.current_player
             self.switch_player()

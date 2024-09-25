@@ -12,7 +12,9 @@ BLACK = (0, 0, 0)
 LIGHT_GRAY = (240, 240, 240)
 DARK_GRAY = (200, 200, 200)
 BLUE = (0, 0, 255)
-
+RED = (255, 0, 0)
+YELLOW = (255, 255, 0)
+GREEN = (0, 255, 0)
 # 字体设置
 FONT_PATH = "fonts/SimHei.ttf"
 FONT_SIZE = 32
@@ -57,7 +59,14 @@ def draw_stones(screen, game):
                                    GRID_SIZE // 2 - 2)
                 pygame.draw.circle(screen, BLACK, (GRID_SIZE * (col + 1), GRID_SIZE * (row + 1)),
                                    GRID_SIZE // 2 - 2, 1)
-
+# 高亮显示最后两步棋
+    last_two_moves = game.move_history[-2:]
+    for i, (row, col) in enumerate(reversed(last_two_moves)):
+        center = (GRID_SIZE * (col + 1), GRID_SIZE * (row + 1))
+        color = RED if i == 0 else GREEN  # 最后一步为红色，倒数第二步为绿色
+        rect_size = GRID_SIZE - 4  # 方块大小稍小于格子大小
+        rect = pygame.Rect(center[0] - rect_size // 2, center[1] - rect_size // 2, rect_size, rect_size)
+        pygame.draw.rect(screen, color, rect, 3)  # 绘制方块边框，宽度为3
 def draw_button(screen, text, x, y, width, height):
     button_rect = pygame.Rect(x, y, width, height)
     pygame.draw.rect(screen, LIGHT_GRAY, button_rect)
@@ -66,6 +75,7 @@ def draw_button(screen, text, x, y, width, height):
     text_rect = text_surface.get_rect(center=button_rect.center)
     screen.blit(text_surface, text_rect)
     return button_rect
+
 
 def main_menu():
     """显示主菜单"""
@@ -300,7 +310,7 @@ def network_mode_selection():
 
     create_button = draw_button(screen, "创建游戏", SCREEN_SIZE // 4, SCREEN_SIZE // 3, 250, 50)
     join_button = draw_button(screen, "加入游戏", SCREEN_SIZE // 4, SCREEN_SIZE // 2, 250, 50)
-
+    back_button = draw_button(screen, "返回", SCREEN_SIZE // 4, SCREEN_SIZE * 2 // 3, 250, 50)
     while True:
         pygame.display.flip()
         for event in pygame.event.get():
@@ -314,7 +324,8 @@ def network_mode_selection():
                         return "server", int(port)
                 elif join_button.collidepoint(event.pos):
                     return "client", None  # Return None for port, we'll get it in show_available_rooms
-
+                elif back_button.collidepoint(event.pos): 
+                    return "back", None
         pygame.time.wait(100)
 
 def show_winner_popup(screen, winner):

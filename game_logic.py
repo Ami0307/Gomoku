@@ -13,6 +13,8 @@ def start_game_ui():
         return mode, None, None
     elif game_mode == "network":
         network_mode, port = network_mode_selection()  # 获取 port
+        if network_mode == "back":
+            return start_game_ui()
         if network_mode == "server":
             return "Player", network_mode, port  # 使用已获取的 port
         else:
