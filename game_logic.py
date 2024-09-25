@@ -25,7 +25,7 @@ def play_game(game, mode, network_mode=None, port=None):
     """实际的游戏循环"""
     pygame.init()
     screen = pygame.display.set_mode((SCREEN_SIZE, SCREEN_SIZE))
-    pygame.display.set_caption("Gomoku")
+    pygame.display.set_caption("五子棋")
 
     network = None
     if network_mode:

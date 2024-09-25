@@ -4,6 +4,8 @@ from common import Game, SCREEN_SIZE, GRID_SIZE, BOARD_SIZE, MARGIN
 from network import start_network_game, get_available_rooms, start_discovery_service, check_for_new_connection, start_server
 from ai import ai_move
 
+pygame.init()
+pygame.font.init()
 # 定义颜色
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
@@ -11,8 +13,19 @@ LIGHT_GRAY = (240, 240, 240)
 DARK_GRAY = (200, 200, 200)
 BLUE = (0, 0, 255)
 
+# 字体设置
+FONT_PATH = "fonts/SimHei.ttf"
+FONT_SIZE = 32
 
+def load_font(size):
+    try:
+        return pygame.font.Font(FONT_PATH, size)
+    except IOError:
+        print(f"无法加载字体文件: {FONT_PATH}，使用系统默认字体")
+        return pygame.font.SysFont(None, size)
 
+# 初始化字体
+GAME_FONT = load_font(FONT_SIZE)
 
 def draw_board(screen):
     """绘制棋盘"""
@@ -49,8 +62,7 @@ def draw_button(screen, text, x, y, width, height):
     button_rect = pygame.Rect(x, y, width, height)
     pygame.draw.rect(screen, LIGHT_GRAY, button_rect)
     pygame.draw.rect(screen, DARK_GRAY, button_rect, 2)
-    font = pygame.font.SysFont(None, 32)
-    text_surface = font.render(text, True, BLACK)
+    text_surface = GAME_FONT.render(text, True, BLACK)
     text_rect = text_surface.get_rect(center=button_rect.center)
     screen.blit(text_surface, text_rect)
     return button_rect
@@ -59,13 +71,13 @@ def main_menu():
     """显示主菜单"""
     pygame.init()
     screen = pygame.display.set_mode((SCREEN_SIZE, SCREEN_SIZE))
-    pygame.display.set_caption("Gomoku Main Menu")
+    pygame.display.set_caption("五子棋主菜单")
 
     screen.fill(WHITE)  # 设置白色背景
 
-    local_button = draw_button(screen, "Local Game", SCREEN_SIZE // 4, SCREEN_SIZE // 3, 250, 50)
-    network_button = draw_button(screen, "Network Game", SCREEN_SIZE // 4, SCREEN_SIZE // 2, 250, 50)
-    quit_button = draw_button(screen, "Quit", SCREEN_SIZE // 4, SCREEN_SIZE * 2 // 3, 250, 50)
+    local_button = draw_button(screen, "本地游戏", SCREEN_SIZE // 4, SCREEN_SIZE // 3, 250, 50)
+    network_button = draw_button(screen, "网络游戏", SCREEN_SIZE // 4, SCREEN_SIZE // 2, 250, 50)
+    quit_button = draw_button(screen, "退出", SCREEN_SIZE // 4, SCREEN_SIZE * 2 // 3, 250, 50)
 
     while True:
         pygame.display.flip()
@@ -86,12 +98,12 @@ def game_mode_selection():
     """选择游戏模式（AI 或玩家对战）"""
     pygame.init()
     screen = pygame.display.set_mode((SCREEN_SIZE, SCREEN_SIZE))
-    pygame.display.set_caption("Gomoku Mode Selection")
+    pygame.display.set_caption("五子棋模式选择")
 
     screen.fill(WHITE)  # 设置白色背景
 
-    ai_button = draw_button(screen, "Play against AI", SCREEN_SIZE // 4, SCREEN_SIZE // 3, 250, 50)
-    player_button = draw_button(screen, "Play against Player", SCREEN_SIZE // 4, SCREEN_SIZE // 2, 250, 50)
+    ai_button = draw_button(screen, "对战AI", SCREEN_SIZE // 4, SCREEN_SIZE // 3, 250, 50)
+    player_button = draw_button(screen, "玩家对战", SCREEN_SIZE // 4, SCREEN_SIZE // 2, 250, 50)
 
     while True:
         pygame.display.flip()
@@ -110,7 +122,7 @@ def input_port():
     screen = pygame.display.set_mode((SCREEN_SIZE, SCREEN_SIZE))
     pygame.display.set_caption("输入端口号")
 
-    font = pygame.font.SysFont(None, 32)
+    font = GAME_FONT
     input_box = pygame.Rect(SCREEN_SIZE // 4, SCREEN_SIZE // 2, 250, 32)
     color_inactive = pygame.Color('lightskyblue3')
     color_active = pygame.Color('dodgerblue2')
@@ -168,30 +180,29 @@ def input_port():
         pygame.display.flip()
 
 def waiting_room(is_host=True, network=None):
-    print(f"Entering waiting room. Is host: {is_host}")
+    print(f"进入等待房间。是否为主机: {is_host}")
     pygame.init()
     screen = pygame.display.set_mode((SCREEN_SIZE, SCREEN_SIZE))
-    pygame.display.set_caption("Waiting Room")
+    pygame.display.set_caption("等待房间")
 
-    font = pygame.font.SysFont(None, 32)
-    message = "Waiting for other player to join..." if is_host else "Waiting for host to start the game..."
+    message = "等待其他玩家加入..." if is_host else "等待主机开始游戏..."
     start_button = None
 
     if is_host:
-        start_button = draw_button(screen, "Start Game", SCREEN_SIZE // 4, SCREEN_SIZE * 2 // 3, 250, 50)
+        start_button = draw_button(screen, "开始游戏", SCREEN_SIZE // 4, SCREEN_SIZE * 2 // 3, 250, 50)
 
     connection_established = network.connected if network else False
 
     while True:
         screen.fill(WHITE)
-        text = font.render(message, True, BLACK)
+        text = GAME_FONT.render(message, True, BLACK)
         text_rect = text.get_rect(center=(SCREEN_SIZE // 2, SCREEN_SIZE // 2))
         screen.blit(text, text_rect)
 
         if is_host and connection_established:
             pygame.draw.rect(screen, LIGHT_GRAY, start_button)
             pygame.draw.rect(screen, DARK_GRAY, start_button, 2)
-            start_text = font.render("Start Game", True, BLACK)
+            start_text = GAME_FONT.render("开始游戏", True, BLACK)
             start_text_rect = start_text.get_rect(center=start_button.center)
             screen.blit(start_text, start_text_rect)
 
@@ -219,7 +230,7 @@ def waiting_room(is_host=True, network=None):
                 if client_socket:
                     network.client = client_socket  # 设置客户端 socket
                     connection_established = True
-                    message = "Other player joined. Click 'Start Game' to begin."
+                    message = "其他玩家加入。点击 '开始游戏' 开始游戏。"
                     print("Client connected.")
                     network.send({"type": "connection_established"})
             else:
@@ -230,7 +241,7 @@ def waiting_room(is_host=True, network=None):
                         if data.get("type") == "connection_established":
                             print("Connection established")
                             connection_established = True
-                            message = "Connected to host. Waiting for game to start..."
+                            message = "已连接到主机。等待游戏开始..."
                         elif data.get("type") == "start_game":
                             print("Received start_game signal")
                             return network
@@ -250,21 +261,20 @@ def show_available_rooms():
     """显示可用的房间列表"""
     pygame.init()
     screen = pygame.display.set_mode((SCREEN_SIZE, SCREEN_SIZE))
-    pygame.display.set_caption("Available Rooms")
+    pygame.display.set_caption("可用房间")
 
-    font = pygame.font.SysFont(None, 32)
     room_buttons = []
 
     available_rooms = get_available_rooms()
 
     while True:
         screen.fill(WHITE)
-        text = font.render("Available Rooms", True, BLACK)
+        text = GAME_FONT.render("可用房间", True, BLACK)
         text_rect = text.get_rect(center=(SCREEN_SIZE // 2, 50))
         screen.blit(text, text_rect)
 
         for i, room in enumerate(available_rooms):
-            button = draw_button(screen, f"Room {room['host']}:{room['port']}", SCREEN_SIZE // 4, 100 + i * 60, 250, 50)
+            button = draw_button(screen, f"房间 {room['host']}:{room['port']}", SCREEN_SIZE // 4, 100 + i * 60, 250, 50)
             room_buttons.append((button, room))
 
         pygame.display.flip()
@@ -284,12 +294,12 @@ def show_available_rooms():
 def network_mode_selection():
     pygame.init()
     screen = pygame.display.set_mode((SCREEN_SIZE, SCREEN_SIZE))
-    pygame.display.set_caption("Gomoku Network Mode Selection")
+    pygame.display.set_caption("五子棋网络模式选择")
 
     screen.fill(WHITE)
 
-    create_button = draw_button(screen, "Create Game", SCREEN_SIZE // 4, SCREEN_SIZE // 3, 250, 50)
-    join_button = draw_button(screen, "Join Game", SCREEN_SIZE // 4, SCREEN_SIZE // 2, 250, 50)
+    create_button = draw_button(screen, "创建游戏", SCREEN_SIZE // 4, SCREEN_SIZE // 3, 250, 50)
+    join_button = draw_button(screen, "加入游戏", SCREEN_SIZE // 4, SCREEN_SIZE // 2, 250, 50)
 
     while True:
         pygame.display.flip()
@@ -317,19 +327,17 @@ def show_winner_popup(screen, winner):
     popup.fill(WHITE)
     pygame.draw.rect(popup, DARK_GRAY, (0, 0, popup_width, popup_height), 2)
 
-    font = pygame.font.SysFont(None, 36)
     if winner == "Draw":
-        message = "Game Over! It's a Draw!"
+        message = "游戏结束！平局！"
     else:
-        message = f"Game Over! {winner} Wins!"
-    text = font.render(message, True, BLACK)
+        message = f"游戏结束！{winner}获胜！"
+    text = GAME_FONT.render(message, True, BLACK)
     text_rect = text.get_rect(center=(popup_width // 2, popup_height // 5))
     popup.blit(text, text_rect)
 
-    button_font = pygame.font.SysFont(None, 32)
-    play_again_text = button_font.render("Play Again", True, BLACK)
-    main_menu_text = button_font.render("Main Menu", True, BLACK)
-    quit_text = button_font.render("Quit", True, BLACK)
+    play_again_text = GAME_FONT.render("再来一局", True, BLACK)
+    main_menu_text = GAME_FONT.render("主菜单", True, BLACK)
+    quit_text = GAME_FONT.render("退出", True, BLACK)
 
     play_again_rect = pygame.Rect(50, popup_height * 2 // 5, 200, 40)
     main_menu_rect = pygame.Rect(50, popup_height * 3 // 5, 200, 40)
