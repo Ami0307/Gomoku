@@ -15,6 +15,7 @@ BLUE = (0, 0, 255)
 RED = (255, 0, 0)
 YELLOW = (255, 255, 0)
 GREEN = (0, 255, 0)
+BOARD_COLOR = (250, 214, 165)  # 添加这行，定义棋盘背景色
 # 字体设置
 FONT_PATH = "fonts/SimHei.ttf"
 FONT_SIZE = 32
@@ -29,40 +30,23 @@ def load_font(size):
 # 初始化字体
 GAME_FONT = load_font(FONT_SIZE)
 
-def draw_board(screen):
-    """绘制棋盘"""
-    screen.fill(WHITE)
-    for i in range(BOARD_SIZE):
-        # 画横线
-        pygame.draw.line(screen, DARK_GRAY, 
-                         (MARGIN, MARGIN + i * GRID_SIZE),
-                         (SCREEN_SIZE - MARGIN, MARGIN + i * GRID_SIZE), 1)
-        # 画竖线
-        pygame.draw.line(screen, DARK_GRAY, 
-                         (MARGIN + i * GRID_SIZE, MARGIN),
-                         (MARGIN + i * GRID_SIZE, SCREEN_SIZE - MARGIN), 1)
-    
-    # 画边框
-    pygame.draw.rect(screen, DARK_GRAY, 
-                     (MARGIN, MARGIN, 
-                      BOARD_SIZE * GRID_SIZE, BOARD_SIZE * GRID_SIZE), 2)
 
 def draw_stones(screen, game):
     """绘制棋子"""
     for row in range(BOARD_SIZE):
         for col in range(BOARD_SIZE):
             if game.board[row][col] == 'Black':
-                pygame.draw.circle(screen, BLACK, (GRID_SIZE * (col + 1), GRID_SIZE * (row + 1)),
+                pygame.draw.circle(screen, BLACK, (GRID_SIZE * (col + 1), GRID_SIZE * (row + 1) + 40),
                                    GRID_SIZE // 2 - 2)
             elif game.board[row][col] == 'White':
-                pygame.draw.circle(screen, WHITE, (GRID_SIZE * (col + 1), GRID_SIZE * (row + 1)),
+                pygame.draw.circle(screen, WHITE, (GRID_SIZE * (col + 1), GRID_SIZE * (row + 1) + 40),
                                    GRID_SIZE // 2 - 2)
-                pygame.draw.circle(screen, BLACK, (GRID_SIZE * (col + 1), GRID_SIZE * (row + 1)),
+                pygame.draw.circle(screen, BLACK, (GRID_SIZE * (col + 1), GRID_SIZE * (row + 1) + 40),
                                    GRID_SIZE // 2 - 2, 1)
 # 高亮显示最后两步棋
     last_two_moves = game.move_history[-2:]
     for i, (row, col) in enumerate(reversed(last_two_moves)):
-        center = (GRID_SIZE * (col + 1), GRID_SIZE * (row + 1))
+        center = (GRID_SIZE * (col + 1), GRID_SIZE * (row + 1) + 40)
         color = RED if i == 0 else GREEN  # 最后一步为红色，倒数第二步为绿色
         rect_size = GRID_SIZE - 4  # 方块大小稍小于格子大小
         rect = pygame.Rect(center[0] - rect_size // 2, center[1] - rect_size // 2, rect_size, rect_size)
@@ -83,7 +67,7 @@ def main_menu():
     screen = pygame.display.set_mode((SCREEN_SIZE, SCREEN_SIZE))
     pygame.display.set_caption("五子棋主菜单")
 
-    screen.fill(WHITE)  # 设置白色背景
+    screen.fill(BOARD_COLOR)  # 使用棋盘颜色作为背景
 
     local_button = draw_button(screen, "本地游戏", SCREEN_SIZE // 4, SCREEN_SIZE // 3, 250, 50)
     network_button = draw_button(screen, "网络游戏", SCREEN_SIZE // 4, SCREEN_SIZE // 2, 250, 50)
@@ -110,7 +94,7 @@ def game_mode_selection():
     screen = pygame.display.set_mode((SCREEN_SIZE, SCREEN_SIZE))
     pygame.display.set_caption("五子棋模式选择")
 
-    screen.fill(WHITE)  # 设置白色背景
+    screen.fill(BOARD_COLOR)  # 使用棋盘颜色作为背景
 
     ai_button = draw_button(screen, "对战AI", SCREEN_SIZE // 4, SCREEN_SIZE // 3, 250, 50)
     player_button = draw_button(screen, "玩家对战", SCREEN_SIZE // 4, SCREEN_SIZE // 2, 250, 50)
@@ -306,7 +290,7 @@ def network_mode_selection():
     screen = pygame.display.set_mode((SCREEN_SIZE, SCREEN_SIZE))
     pygame.display.set_caption("五子棋网络模式选择")
 
-    screen.fill(WHITE)
+    screen.fill(BOARD_COLOR)  # 使用棋盘颜色作为背景
 
     create_button = draw_button(screen, "创建游戏", SCREEN_SIZE // 4, SCREEN_SIZE // 3, 250, 50)
     join_button = draw_button(screen, "加入游戏", SCREEN_SIZE // 4, SCREEN_SIZE // 2, 250, 50)
@@ -379,5 +363,92 @@ def show_winner_popup(screen, winner):
                 elif quit_rect.collidepoint((mouse_pos[0] - popup_x, mouse_pos[1] - popup_y)):
                     return "quit"
 
+def draw_game_screen(screen, game, network_mode=False):
+    # 使用棋盘颜色填充背景，而不是白色
+    screen.fill(BOARD_COLOR)
+    
+    # 绘制菜单栏
+    menu_height = 40
+    pygame.draw.rect(screen, DARK_GRAY, (0, 0, SCREEN_SIZE, menu_height))
+    pygame.draw.line(screen, BLACK, (0, menu_height), (SCREEN_SIZE, menu_height), 2)
 
+    # 绘制返回主菜单按钮
+    main_menu_button = draw_button(screen, "主菜单", 10, 5, 100, 30)
 
+    # 显示当前回合信息
+    turn_text = f"当前回合: {'黑棋' if game.current_player == 'Black' else '白棋'}"
+    turn_surface = GAME_FONT.render(turn_text, True, WHITE)
+    screen.blit(turn_surface, (SCREEN_SIZE // 2 - turn_surface.get_width() // 2, 5))
+
+    # 如果是网络模式，显示玩家颜色
+    if network_mode:
+        color_text = f"你的颜色: {'黑棋' if game.player_color == 'Black' else '白棋'}"
+        color_surface = GAME_FONT.render(color_text, True, WHITE)
+        screen.blit(color_surface, (SCREEN_SIZE - color_surface.get_width() - 10, 5))
+
+    # 绘制棋盘
+    for i in range(BOARD_SIZE):
+        # 画横线
+        pygame.draw.line(screen, BLACK,  # 使用黑色线条以增加对比度
+                         (MARGIN, MARGIN + menu_height + i * GRID_SIZE),
+                         (SCREEN_SIZE - MARGIN, MARGIN + menu_height + i * GRID_SIZE), 1)
+        # 画竖线
+        pygame.draw.line(screen, BLACK,  # 使用黑色线条以增加对比度
+                         (MARGIN + i * GRID_SIZE, MARGIN + menu_height),
+                         (MARGIN + i * GRID_SIZE, SCREEN_SIZE - MARGIN), 1)
+    
+    # 画边框
+    pygame.draw.rect(screen, BLACK,  # 使用黑色边框以增加对比度
+                     (MARGIN, MARGIN + menu_height, 
+                      BOARD_SIZE * GRID_SIZE, BOARD_SIZE * GRID_SIZE), 2)
+
+    # 绘制棋子
+    for row in range(BOARD_SIZE):
+        for col in range(BOARD_SIZE):
+            if game.board[row][col] == 'Black':
+                pygame.draw.circle(screen, BLACK, (GRID_SIZE * (col + 1), GRID_SIZE * (row + 1) + menu_height),
+                                   GRID_SIZE // 2 - 2)
+            elif game.board[row][col] == 'White':
+                pygame.draw.circle(screen, WHITE, (GRID_SIZE * (col + 1), GRID_SIZE * (row + 1) + menu_height),
+                                   GRID_SIZE // 2 - 2)
+                pygame.draw.circle(screen, BLACK, (GRID_SIZE * (col + 1), GRID_SIZE * (row + 1) + menu_height),
+                                   GRID_SIZE // 2 - 2, 1)
+
+    # 高亮显示最后两步棋
+    last_two_moves = game.move_history[-2:]
+    for i, (row, col) in enumerate(reversed(last_two_moves)):
+        center = (GRID_SIZE * (col + 1), GRID_SIZE * (row + 1) + menu_height)
+        color = RED if i == 0 else GREEN  # 最后一步为红色，倒数第二步为绿色
+        rect_size = GRID_SIZE - 4  # 方块大小稍小于格子大小
+        rect = pygame.Rect(center[0] - rect_size // 2, center[1] - rect_size // 2, rect_size, rect_size)
+        pygame.draw.rect(screen, color, rect, 3)  # 绘制方块边框，宽度为3
+
+    # 更新显示
+    pygame.display.flip()
+
+    return main_menu_button
+
+def choose_first_player():
+    screen = pygame.display.set_mode((SCREEN_SIZE, SCREEN_SIZE))
+    pygame.display.set_caption("选择先手")
+    screen.fill(BOARD_COLOR)  # 使用棋盘颜色作为背景
+
+    title_font = pygame.font.Font(FONT_PATH, 40)
+    title_surface = title_font.render("谁先手？", True, BLACK)
+    screen.blit(title_surface, (SCREEN_SIZE // 2 - title_surface.get_width() // 2, 100))
+
+    player_button = draw_button(screen, "玩家", SCREEN_SIZE // 4, SCREEN_SIZE // 2, 200, 50)
+    ai_button = draw_button(screen, "AI", SCREEN_SIZE * 3 // 4 - 200, SCREEN_SIZE // 2, 200, 50)
+
+    pygame.display.flip()
+
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                if player_button.collidepoint(event.pos):
+                    return "Player"
+                elif ai_button.collidepoint(event.pos):
+                    return "AI"
