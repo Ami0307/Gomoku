@@ -39,7 +39,7 @@ def find_winning_move(game, player):
         for j in range(BOARD_SIZE):
             if game.is_valid_move(i, j):
                 game.board[i][j] = player
-                if game.check_winner(i, j):
+                if game.check_winner():
                     game.board[i][j] = None
                     return (i, j)
                 game.board[i][j] = None
