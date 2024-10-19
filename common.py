@@ -10,11 +10,13 @@ class Game:
         self.current_player = 'Black'
         self.winner = None
         self.player_color = None
+        self.move_history = []
 
     def update_board(self, row, col):
         """更新棋盘状态"""
         if self.board[row][col] is None:
             self.board[row][col] = self.current_player
+            self.move_history.append((row, col))
             if self.check_winner(row, col):
                 self.winner = self.current_player
             self.switch_player()
@@ -77,3 +79,10 @@ class Game:
 
     def is_valid_move(self, row, col):
         return 0 <= row < BOARD_SIZE and 0 <= col < BOARD_SIZE and self.board[row][col] is None
+
+    def handle_network_move(self, move_data):
+        if isinstance(move_data, list) and len(move_data) == 2:
+            row, col = move_data
+            if self.is_valid_move(row, col):
+                return self.update_board(row, col)
+        return False
