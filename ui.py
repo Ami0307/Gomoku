@@ -1,8 +1,9 @@
 import pygame
 import sys
-from common import Game, SCREEN_SIZE, GRID_SIZE, BOARD_SIZE, MARGIN, toggle_fullscreen, get_screen, is_fullscreen, get_screen_size
+from common import Game, SCREEN_SIZE, GRID_SIZE, BOARD_SIZE, MARGIN, toggle_fullscreen, get_screen, is_fullscreen, get_screen_size, bgm_enabled, sound_enabled, is_fullscreen, toggle_bgm, toggle_sound, toggle_fullscreen, get_bgm_enabled
 from network import start_network_game, get_available_rooms, start_discovery_service, check_for_new_connection, start_server
 from ai import ai_move
+import pygame.mixer
 
 pygame.init()
 pygame.font.init()
@@ -29,6 +30,7 @@ def load_font(size):
 
 # 初始化字体
 GAME_FONT = load_font(FONT_SIZE)
+
 
 
 def draw_stones(screen, game):
@@ -286,7 +288,7 @@ def waiting_room(is_host=True, network=None):
                         if data.get("type") == "connection_established":
                             print("Connection established")
                             connection_established = True
-                            message = "已连接到主机。等待游戏开始..."
+                            message = "已连接到机。等待游戏开始..."
                         elif data.get("type") == "start_game":
                             print("Received start_game signal")
                             return network
@@ -307,20 +309,35 @@ def show_available_rooms():
     screen = get_screen()
     pygame.display.set_caption("可用房间")
 
-    room_buttons = []
-
     available_rooms = get_available_rooms()
 
     while True:
-        screen = get_screen()  # 每次循环都获取最新的屏幕对象
-        screen.fill(WHITE)
-        text = GAME_FONT.render("可用房间", True, BLACK)
-        text_rect = text.get_rect(center=(SCREEN_SIZE // 2, 50))
-        screen.blit(text, text_rect)
+        screen = get_screen()
+        screen_width, screen_height = get_screen_size()
+        screen.fill(BOARD_COLOR)
 
+        title_font = pygame.font.Font(FONT_PATH, 40)
+        title_surface = title_font.render("可用房间", True, BLACK)
+        title_rect = title_surface.get_rect(center=(screen_width // 2, screen_height // 6))
+        screen.blit(title_surface, title_rect)
+
+        button_width, button_height = 300, 50
+        button_margin = 20
+        total_height = (len(available_rooms) + 1) * (button_height + button_margin)
+        start_y = (screen_height - total_height) // 2
+
+        room_buttons = []
         for i, room in enumerate(available_rooms):
-            button = draw_button(screen, f"房间 {room['host']}:{room['port']}", SCREEN_SIZE // 4, 100 + i * 60, 250, 50)
+            button = draw_button(screen, f"房间 {room['host']}:{room['port']}", 
+                                 (screen_width - button_width) // 2, 
+                                 start_y + i * (button_height + button_margin), 
+                                 button_width, button_height)
             room_buttons.append((button, room))
+
+        back_button = draw_button(screen, "返回", 
+                                  (screen_width - button_width) // 2, 
+                                  start_y + len(available_rooms) * (button_height + button_margin), 
+                                  button_width, button_height)
 
         pygame.display.flip()
 
@@ -332,8 +349,9 @@ def show_available_rooms():
                 for button, room in room_buttons:
                     if button.collidepoint(event.pos):
                         return room['host'], room['port']
+                if back_button.collidepoint(event.pos):
+                    return main_menu()
 
-        # Add a small delay to reduce CPU usage
         pygame.time.wait(100)
 
 def network_mode_selection():
@@ -377,7 +395,7 @@ def network_mode_selection():
         pygame.time.wait(100)
 
 def show_winner_popup(screen, winner):
-    """显示获胜者弹窗，并提供再来一局、返回主菜单和退出选项"""
+    """显示获胜者弹窗，提供再来一局、返回主菜单和退出选项"""
     screen_width, screen_height = get_screen_size()
     popup_width, popup_height = min(500, screen_width - 40), min(400, screen_height - 40)
     popup_x = (screen_width - popup_width) // 2
@@ -454,27 +472,56 @@ def show_winner_popup(screen, winner):
         pygame.time.wait(100)
 
 def draw_game_screen(screen, game, network_mode=False):
+    global bgm_enabled
     screen_width, screen_height = get_screen_size()
     screen.fill(BOARD_COLOR)
     
-    menu_height = 40
+    # 增加菜单栏高度
+    menu_height = 60 if network_mode else 40
     pygame.draw.rect(screen, DARK_GRAY, (0, 0, screen_width, menu_height))
     pygame.draw.line(screen, BLACK, (0, menu_height), (screen_width, menu_height), 2)
 
+    # 主菜单按钮
     main_menu_button = draw_button(screen, "主菜单", 10, 5, 100, 30)
 
+    # 当前回合信息
     turn_text = f"当前回合: {'黑棋' if game.current_player == 'Black' else '白棋'}"
-    turn_surface = GAME_FONT.render(turn_text, True, WHITE)
-    screen.blit(turn_surface, (screen_width // 2 - turn_surface.get_width() // 2, 5))
+    turn_font = pygame.font.Font(FONT_PATH, 18)
+    turn_surface = turn_font.render(turn_text, True, WHITE)
+    turn_rect = turn_surface.get_rect(midleft=(120, menu_height // 2))
+    screen.blit(turn_surface, turn_rect)
 
+    # 网络模式下显示玩家颜色
     if network_mode:
         color_text = f"你的颜色: {'黑棋' if game.player_color == 'Black' else '白棋'}"
-        color_surface = GAME_FONT.render(color_text, True, WHITE)
-        screen.blit(color_surface, (screen_width - color_surface.get_width() - 10, 5))
+        color_font = pygame.font.Font(FONT_PATH, 18)
+        color_surface = color_font.render(color_text, True, WHITE)
+        color_rect = color_surface.get_rect(midleft=(turn_rect.right + 20, menu_height // 2))
+        screen.blit(color_surface, color_rect)
+
+    # BGM 复选框
+    checkbox_size = 20
+    checkbox_margin = 5
+    bgm_checkbox_rect = pygame.Rect(screen_width - checkbox_size - checkbox_margin - 50, (menu_height - checkbox_size) // 2, checkbox_size, checkbox_size)
+    pygame.draw.rect(screen, WHITE, bgm_checkbox_rect)
+    pygame.draw.rect(screen, BLACK, bgm_checkbox_rect, 2)
+
+    if get_bgm_enabled():
+        # 绘制勾选标记
+        pygame.draw.line(screen, BLACK, (bgm_checkbox_rect.left + 3, bgm_checkbox_rect.centery), 
+                         (bgm_checkbox_rect.centerx, bgm_checkbox_rect.bottom - 3), 2)
+        pygame.draw.line(screen, BLACK, (bgm_checkbox_rect.centerx, bgm_checkbox_rect.bottom - 3), 
+                         (bgm_checkbox_rect.right - 3, bgm_checkbox_rect.top + 3), 2)
+
+    bgm_label_font = pygame.font.Font(FONT_PATH, 16)
+    bgm_label_surface = bgm_label_font.render("BGM", True, WHITE)
+    bgm_label_rect = bgm_label_surface.get_rect(midright=(bgm_checkbox_rect.left - 5, bgm_checkbox_rect.centery))
+    screen.blit(bgm_label_surface, bgm_label_rect)
 
     # 计算棋盘大小和位置
     board_size = min(screen_width, screen_height - menu_height) - 2 * MARGIN
     grid_size = board_size // (BOARD_SIZE - 1)
+    board_size = grid_size * (BOARD_SIZE - 1)  # 重新计算board_size，确保它是grid_size的整数倍
     board_start_x = (screen_width - board_size) // 2
     board_start_y = menu_height + (screen_height - menu_height - board_size) // 2
 
@@ -487,6 +534,7 @@ def draw_game_screen(screen, game, network_mode=False):
                          (board_start_x + i * grid_size, board_start_y),
                          (board_start_x + i * grid_size, board_start_y + board_size), 1)
     
+    # 绘制棋盘边框
     pygame.draw.rect(screen, BLACK,
                      (board_start_x, board_start_y, board_size, board_size), 2)
 
@@ -513,7 +561,7 @@ def draw_game_screen(screen, game, network_mode=False):
 
     pygame.display.flip()
 
-    return main_menu_button, board_start_x, board_start_y, grid_size
+    return main_menu_button, board_start_x, board_start_y, grid_size, bgm_checkbox_rect
 
 def choose_first_player():
     screen = get_screen()
@@ -552,9 +600,13 @@ def choose_first_player():
         pygame.time.wait(100)
 
 def settings_menu():
-    global is_fullscreen
+    global bgm_enabled, sound_enabled, is_fullscreen
     screen = get_screen()
     pygame.display.set_caption("设置")
+
+    checkbox_size = 30
+    checkbox_color = WHITE
+    check_color = BLACK
 
     while True:
         screen = get_screen()
@@ -563,17 +615,54 @@ def settings_menu():
         
         title_font = pygame.font.Font(FONT_PATH, 40)
         title_surface = title_font.render("设置", True, BLACK)
-        title_rect = title_surface.get_rect(center=(screen_width // 2, screen_height // 4))
+        title_rect = title_surface.get_rect(center=(screen_width // 2, screen_height // 6))
         screen.blit(title_surface, title_rect)
 
         button_width, button_height = 250, 50
-        button_margin = 20
-        total_height = 2 * button_height + button_margin
+        checkbox_margin = 20
+        total_height = 3 * (checkbox_size + checkbox_margin) + button_height
         start_y = (screen_height - total_height) // 2
 
-        fullscreen_text = "关闭全屏" if is_fullscreen else "开启全屏"
-        fullscreen_button = draw_button(screen, fullscreen_text, (screen_width - button_width) // 2, start_y, button_width, button_height)
-        back_button = draw_button(screen, "返回", (screen_width - button_width) // 2, start_y + button_height + button_margin, button_width, button_height)
+        # 全屏模式复选框
+        fullscreen_checkbox_rect = pygame.Rect((screen_width - checkbox_size) // 2 - 100, start_y, checkbox_size, checkbox_size)
+        pygame.draw.rect(screen, checkbox_color, fullscreen_checkbox_rect)
+        pygame.draw.rect(screen, BLACK, fullscreen_checkbox_rect, 2)
+        if is_fullscreen:
+            pygame.draw.line(screen, check_color, (fullscreen_checkbox_rect.left + 5, fullscreen_checkbox_rect.centery), (fullscreen_checkbox_rect.centerx, fullscreen_checkbox_rect.bottom - 5), 3)
+            pygame.draw.line(screen, check_color, (fullscreen_checkbox_rect.centerx, fullscreen_checkbox_rect.bottom - 5), (fullscreen_checkbox_rect.right - 5, fullscreen_checkbox_rect.top + 5), 3)
+
+        fullscreen_label_font = pygame.font.Font(FONT_PATH, 24)
+        fullscreen_label_surface = fullscreen_label_font.render("全屏模式", True, BLACK)
+        fullscreen_label_rect = fullscreen_label_surface.get_rect(midleft=(fullscreen_checkbox_rect.right + 10, fullscreen_checkbox_rect.centery))
+        screen.blit(fullscreen_label_surface, fullscreen_label_rect)
+
+        # 音效复选框
+        sound_checkbox_rect = pygame.Rect((screen_width - checkbox_size) // 2 - 100, start_y + checkbox_size + checkbox_margin, checkbox_size, checkbox_size)
+        pygame.draw.rect(screen, checkbox_color, sound_checkbox_rect)
+        pygame.draw.rect(screen, BLACK, sound_checkbox_rect, 2)
+        if sound_enabled:
+            pygame.draw.line(screen, check_color, (sound_checkbox_rect.left + 5, sound_checkbox_rect.centery), (sound_checkbox_rect.centerx, sound_checkbox_rect.bottom - 5), 3)
+            pygame.draw.line(screen, check_color, (sound_checkbox_rect.centerx, sound_checkbox_rect.bottom - 5), (sound_checkbox_rect.right - 5, sound_checkbox_rect.top + 5), 3)
+
+        sound_label_font = pygame.font.Font(FONT_PATH, 24)
+        sound_label_surface = sound_label_font.render("音效", True, BLACK)
+        sound_label_rect = sound_label_surface.get_rect(midleft=(sound_checkbox_rect.right + 10, sound_checkbox_rect.centery))
+        screen.blit(sound_label_surface, sound_label_rect)
+
+        # BGM 复选框
+        bgm_checkbox_rect = pygame.Rect((screen_width - checkbox_size) // 2 - 100, start_y + 2 * (checkbox_size + checkbox_margin), checkbox_size, checkbox_size)
+        pygame.draw.rect(screen, checkbox_color, bgm_checkbox_rect)
+        pygame.draw.rect(screen, BLACK, bgm_checkbox_rect, 2)
+        if get_bgm_enabled():
+            pygame.draw.line(screen, check_color, (bgm_checkbox_rect.left + 5, bgm_checkbox_rect.centery), (bgm_checkbox_rect.centerx, bgm_checkbox_rect.bottom - 5), 3)
+            pygame.draw.line(screen, check_color, (bgm_checkbox_rect.centerx, bgm_checkbox_rect.bottom - 5), (bgm_checkbox_rect.right - 5, bgm_checkbox_rect.top + 5), 3)
+
+        bgm_label_font = pygame.font.Font(FONT_PATH, 24)
+        bgm_label_surface = bgm_label_font.render("背景音乐", True, BLACK)
+        bgm_label_rect = bgm_label_surface.get_rect(midleft=(bgm_checkbox_rect.right + 10, bgm_checkbox_rect.centery))
+        screen.blit(bgm_label_surface, bgm_label_rect)
+
+        back_button = draw_button(screen, "返回", (screen_width - button_width) // 2, start_y + 3 * (checkbox_size + checkbox_margin), button_width, button_height)
 
         pygame.display.flip()
 
@@ -582,10 +671,35 @@ def settings_menu():
                 pygame.quit()
                 sys.exit()
             if event.type == pygame.MOUSEBUTTONDOWN:
-                if fullscreen_button.collidepoint(event.pos):
-                    toggle_fullscreen()
+                if fullscreen_checkbox_rect.collidepoint(event.pos):
+                    is_fullscreen = toggle_fullscreen()
                     screen = get_screen()  # 立即更新屏幕对象
+                elif sound_checkbox_rect.collidepoint(event.pos):
+                    sound_enabled = toggle_sound()
+                elif bgm_checkbox_rect.collidepoint(event.pos):
+                    bgm_enabled = toggle_bgm()
                 elif back_button.collidepoint(event.pos):
                     return
 
-        pygame.time.wait(100)
+        # 在每次循环中重新绘制复选框
+        draw_checkbox(screen, fullscreen_checkbox_rect, is_fullscreen)
+        draw_checkbox(screen, sound_checkbox_rect, sound_enabled)
+        draw_checkbox(screen, bgm_checkbox_rect, bgm_enabled)
+
+        pygame.display.flip()
+
+def draw_checkbox(screen, rect, is_checked):
+    pygame.draw.rect(screen, WHITE, rect)
+    pygame.draw.rect(screen, BLACK, rect, 2)
+    if is_checked:
+        pygame.draw.line(screen, BLACK, (rect.left + 5, rect.centery), 
+                         (rect.centerx, rect.bottom - 5), 3)
+        pygame.draw.line(screen, BLACK, (rect.centerx, rect.bottom - 5), 
+                         (rect.right - 5, rect.top + 5), 3)
+
+
+
+
+
+
+

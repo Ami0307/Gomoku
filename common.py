@@ -5,20 +5,56 @@ MARGIN = GRID_SIZE  # 添加边距
 SCREEN_SIZE = GRID_SIZE * (BOARD_SIZE + 1)  # 增加屏幕大小，为边距留出空间
 
 # 在文件顶部添加全局变量
+global bgm_enabled, sound_enabled, is_fullscreen, screen
+bgm_enabled = True
+sound_enabled = True
 is_fullscreen = False
 screen = None
 
 import pygame
+import pygame.mixer
+pygame.init()
+def get_bgm_enabled():
+    return bgm_enabled
+def load_sound():
+    global move_sound, bgm
+    move_sound = pygame.mixer.Sound("sounds/move.wav")
+    bgm = pygame.mixer.music.load("sounds/music.wav")  # 请确保你有一个背景音乐文件
+
+def play_bgm():
+    if bgm_enabled:
+        pygame.mixer.music.play(-1)  # -1 表示循环播放
+
+def stop_bgm():
+    pygame.mixer.music.stop()
+
+load_sound()
+play_bgm()
+def toggle_bgm():
+    global bgm_enabled
+    bgm_enabled = not bgm_enabled
+    if bgm_enabled:
+        # 启动背景音乐
+        play_bgm()
+    else:
+        # 停止背景音乐
+        stop_bgm()
+    return bgm_enabled
+
+def toggle_sound():
+    global sound_enabled
+    sound_enabled = not sound_enabled
+    return sound_enabled
 
 def toggle_fullscreen():
-    global is_fullscreen, screen
+    global is_fullscreen
     is_fullscreen = not is_fullscreen
     if is_fullscreen:
         screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
     else:
         screen = pygame.display.set_mode((SCREEN_SIZE, SCREEN_SIZE))
     pygame.display.flip()  # 确保显示更新
-    return screen
+    return is_fullscreen
 
 def get_screen():
     global screen

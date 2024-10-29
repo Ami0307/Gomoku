@@ -1,11 +1,13 @@
-from common import Game, SCREEN_SIZE, GRID_SIZE, BOARD_SIZE, MARGIN, get_screen, get_screen_size
+from common import Game, SCREEN_SIZE, GRID_SIZE, BOARD_SIZE, MARGIN, get_screen, get_screen_size, bgm_enabled, sound_enabled, toggle_bgm, toggle_sound, play_bgm, stop_bgm, move_sound, get_bgm_enabled
 from ui import main_menu, game_mode_selection, network_mode_selection, show_winner_popup, draw_stones, show_available_rooms, waiting_room, draw_game_screen, choose_first_player
 from network import start_network_game
 from ai import ai_move
 import pygame
 import sys
-
+import time
+import threading
 WHITE = (255, 255, 255)
+
 def start_game_ui():
     """启动游戏 UI，包括主菜单和模式选择"""
     game_mode = main_menu()
@@ -29,6 +31,7 @@ def start_game_ui():
 
 def play_game(game, mode, network_mode=None, port=None, first_player=None):
     """实际的游戏循环"""
+    global bgm_enabled
     screen = get_screen()
     pygame.display.set_caption("五子棋")
 
@@ -55,7 +58,7 @@ def play_game(game, mode, network_mode=None, port=None, first_player=None):
 
     try:
         while True:
-            main_menu_button, board_start_x, board_start_y, grid_size = draw_game_screen(screen, game, network_mode is not None)
+            main_menu_button, board_start_x, board_start_y, grid_size, bgm_checkbox_rect = draw_game_screen(screen, game, network_mode is not None)
 
             if game.is_over():
                 winner = game.get_winner()
@@ -79,10 +82,16 @@ def play_game(game, mode, network_mode=None, port=None, first_player=None):
                     pygame.quit()
                     sys.exit()
                 elif event.type == pygame.MOUSEBUTTONDOWN:
+                    x, y = event.pos
                     if main_menu_button.collidepoint(event.pos):
                         return "main_menu"
+                    elif bgm_checkbox_rect.collidepoint(x, y):
+                        bgm_enabled = toggle_bgm()
+                        # 只重绘菜单栏区域
+                        main_menu_button, _, _, _, bgm_checkbox_rect = draw_game_screen(screen, game, network_mode is not None)
+                        pygame.display.update(pygame.Rect(0, 0, screen.get_width(), 40))  # 假设菜单栏高度为 40 像素
                     else:
-                        x, y = event.pos
+                        #x, y = event.pos
                         col = round((x - board_start_x) / grid_size)
                         row = round((y - board_start_y) / grid_size)
                         
@@ -90,16 +99,22 @@ def play_game(game, mode, network_mode=None, port=None, first_player=None):
                             if network_mode:
                                 if game.is_player_turn(game.player_color):
                                     if game.update_board(row, col):
+                                        if sound_enabled:
+                                            move_sound.play()
                                         network.send_move(row, col)
                                 else:
                                     print("现在不是你的回合！")
                             else:  # 本地模式（玩家对战或AI对战）
                                 if game.update_board(row, col):
+                                    if sound_enabled:
+                                        move_sound.play()
                                     if mode == "AI":
                                         draw_game_screen(screen, game, network_mode is not None)
                                         pygame.display.flip()
                                         pygame.time.wait(500)
                                         ai_move(game)
+                                        if sound_enabled:
+                                            move_sound.play()
 
             pygame.display.flip()
             clock.tick(30)
@@ -108,8 +123,18 @@ def play_game(game, mode, network_mode=None, port=None, first_player=None):
         if network:
             print("Closing network connection")
             network.close()
+
+def print_bgm_status():
+    while True:
+        print(get_bgm_enabled())
+        time.sleep(1)
+
 def game_loop():
     """游戏主循环"""
+    # 启动打印 BGM 状态的线程
+    bgm_status_thread = threading.Thread(target=print_bgm_status, daemon=True)
+    bgm_status_thread.start()
+
     while True:
         game = Game()
         mode, network_mode, port, first_player = start_game_ui()
@@ -128,6 +153,8 @@ def game_loop():
         
         if action == "quit":
             break
+
+    # 主线程结束时，daemon 线程会自动结束，无需手动停止
 
 if __name__ == "__main__":
     game_loop()

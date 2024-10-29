@@ -1,4 +1,3 @@
-from common import Game
 from game_logic import game_loop
 
 def main():
