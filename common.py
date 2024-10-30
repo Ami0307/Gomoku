@@ -14,6 +14,8 @@ screen = None
 import pygame
 import pygame.mixer
 pygame.init()
+def get_move_sound():
+    return sound_enabled
 def get_bgm_enabled():
     return bgm_enabled
 def load_sound():

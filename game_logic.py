@@ -1,4 +1,4 @@
-from common import Game, SCREEN_SIZE, GRID_SIZE, BOARD_SIZE, MARGIN, get_screen, get_screen_size, bgm_enabled, sound_enabled, toggle_bgm, toggle_sound, play_bgm, stop_bgm, move_sound, get_bgm_enabled
+from common import Game, SCREEN_SIZE, GRID_SIZE, BOARD_SIZE, MARGIN, get_screen, get_screen_size, bgm_enabled, sound_enabled, toggle_bgm, toggle_sound, play_bgm, stop_bgm, move_sound, get_bgm_enabled,get_move_sound
 from ui import main_menu, game_mode_selection, network_mode_selection, show_winner_popup, draw_stones, show_available_rooms, waiting_room, draw_game_screen, choose_first_player
 from network import start_network_game
 from ai import ai_move
@@ -99,22 +99,22 @@ def play_game(game, mode, network_mode=None, port=None, first_player=None):
                             if network_mode:
                                 if game.is_player_turn(game.player_color):
                                     if game.update_board(row, col):
-                                        if sound_enabled:
+                                        if get_move_sound():
                                             move_sound.play()
                                         network.send_move(row, col)
                                 else:
                                     print("现在不是你的回合！")
                             else:  # 本地模式（玩家对战或AI对战）
                                 if game.update_board(row, col):
-                                    if sound_enabled:
+                                    if get_move_sound():
                                         move_sound.play()
                                     if mode == "AI":
                                         draw_game_screen(screen, game, network_mode is not None)
                                         pygame.display.flip()
+                                        if get_move_sound():
+                                            move_sound.play()
                                         pygame.time.wait(500)
                                         ai_move(game)
-                                        if sound_enabled:
-                                            move_sound.play()
 
             pygame.display.flip()
             clock.tick(30)
@@ -126,7 +126,7 @@ def play_game(game, mode, network_mode=None, port=None, first_player=None):
 
 def print_bgm_status():
     while True:
-        print(get_bgm_enabled())
+        print(get_bgm_enabled(),get_move_sound())
         time.sleep(1)
 
 def game_loop():
