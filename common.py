@@ -75,12 +75,16 @@ class Game:
         self.winner = None
         self.player_color = None
         self.move_history = []
+        self.black_undo_count = 0  # 黑方已用悔棋次数
+        self.white_undo_count = 0  # 白方已用悔棋次数
+        self.last_move_after_undo = False  # 标记是否在上次悔棋后走了新的一步
 
     def update_board(self, row, col):
         """更新棋盘状态"""
         if self.board[row][col] is None:
             self.board[row][col] = self.current_player
             self.move_history.append((row, col))
+            self.last_move_after_undo = True  # 有新的移动，可以再次悔棋
             if self.check_winner():
                 self.winner = self.current_player
             self.switch_player()
@@ -170,3 +174,41 @@ class Game:
 
     def is_player_turn(self, player_color):
         return self.current_player == player_color
+
+    def can_undo(self):
+        """检查当前玩家是否可以悔棋"""
+        if not self.move_history:  # 没有历史记录
+            return False
+            
+        if not self.last_move_after_undo:  # 上次悔棋后没有新的移动
+            return False
+            
+        # 检查剩余次数
+        if self.current_player == 'Black':
+            return self.black_undo_count < 3
+        else:
+            return self.white_undo_count < 3
+
+    def undo_move(self, steps=1):
+        """撤回指定步数的移动"""
+        if not self.can_undo():
+            return False
+            
+        if len(self.move_history) < steps:
+            return False
+            
+        # 更新悔棋次数
+        if self.current_player == 'Black':
+            self.black_undo_count += 1
+        else:
+            self.white_undo_count += 1
+            
+        # 执行悔棋
+        for _ in range(steps):
+            if self.move_history:
+                row, col = self.move_history.pop()
+                self.board[row][col] = None
+                self.switch_player()  # 切换回上一个玩家
+        
+        self.last_move_after_undo = False  # 标记刚进行过悔棋
+        return True

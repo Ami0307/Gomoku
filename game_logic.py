@@ -58,7 +58,7 @@ def play_game(game, mode, network_mode=None, port=None, first_player=None):
 
     try:
         while True:
-            main_menu_button, board_start_x, board_start_y, grid_size, bgm_checkbox_rect = draw_game_screen(screen, game, network_mode is not None)
+            main_menu_button, undo_button, board_start_x, board_start_y, grid_size, bgm_checkbox_rect = draw_game_screen(screen, game, network_mode is not None)
 
             if game.is_over():
                 winner = game.get_winner()
@@ -70,12 +70,13 @@ def play_game(game, mode, network_mode=None, port=None, first_player=None):
             if network_mode:
                 move_data = network.check_network_data()
                 if move_data:
-                    if isinstance(move_data, list) and len(move_data) == 2:
+                    if isinstance(move_data, dict) and move_data.get("type") == "undo_request":
+                        # 收到撤回请求时，双方同时撤回两步
+                        game.undo_move(2)  # 撤回两步
+                    elif isinstance(move_data, list) and len(move_data) == 2:
                         row, col = move_data
                         if game.is_valid_move(row, col):
                             game.update_board(row, col)
-                    else:
-                        print(f"Received invalid move data format: {move_data}")
 
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
@@ -85,10 +86,20 @@ def play_game(game, mode, network_mode=None, port=None, first_player=None):
                     x, y = event.pos
                     if main_menu_button.collidepoint(event.pos):
                         return "main_menu"
+                    elif undo_button.collidepoint(event.pos):
+                        if network_mode:
+                            if game.is_player_turn(game.player_color):
+                                # 在网络模式下，发送撤回请求并立即撤回自己的两步
+                                network.send({"type": "undo_request"})
+                                game.undo_move(2)  # 本地也撤回两步
+                        else:
+                            # 本地模式
+                            steps = 2 if mode == "AI" else 1
+                            game.undo_move(steps)
                     elif bgm_checkbox_rect.collidepoint(x, y):
                         bgm_enabled = toggle_bgm()
                         # 只重绘菜单栏区域
-                        main_menu_button, _, _, _, bgm_checkbox_rect = draw_game_screen(screen, game, network_mode is not None)
+                        main_menu_button, _, _, _, _, bgm_checkbox_rect = draw_game_screen(screen, game, network_mode is not None)
                         pygame.display.update(pygame.Rect(0, 0, screen.get_width(), 40))  # 假设菜单栏高度为 40 像素
                     else:
                         #x, y = event.pos

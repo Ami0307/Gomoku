@@ -483,13 +483,21 @@ def draw_game_screen(screen, game, network_mode=False):
 
     # 主菜单按钮
     main_menu_button = draw_button(screen, "主菜单", 10, 5, 100, 30)
+    undo_button = draw_button(screen, "撤回", 120, 5, 100, 30)
 
-    # 当前回合信息
+    # 当前回合信息（向右移动）
     turn_text = f"当前回合: {'黑棋' if game.current_player == 'Black' else '白棋'}"
+    undo_text = f"剩余悔棋次数: {3 - game.black_undo_count if game.current_player == 'Black' else 3 - game.white_undo_count}"
+    
     turn_font = pygame.font.Font(FONT_PATH, 18)
     turn_surface = turn_font.render(turn_text, True, WHITE)
-    turn_rect = turn_surface.get_rect(midleft=(120, menu_height // 2))
+    undo_surface = turn_font.render(undo_text, True, WHITE)
+    
+    turn_rect = turn_surface.get_rect(midleft=(230, menu_height // 2))
+    undo_rect = undo_surface.get_rect(midleft=(turn_rect.right + 20, menu_height // 2))
+    
     screen.blit(turn_surface, turn_rect)
+    screen.blit(undo_surface, undo_rect)
 
     # 网络模式下显示玩家颜色
     if network_mode:
@@ -559,9 +567,19 @@ def draw_game_screen(screen, game, network_mode=False):
         rect = pygame.Rect(center_x - rect_size // 2, center_y - rect_size // 2, rect_size, rect_size)
         pygame.draw.rect(screen, color, rect, 3)
 
+    # 如果不能悔棋，将悔棋按钮设置为灰色
+    if not game.can_undo():
+        pygame.draw.rect(screen, DARK_GRAY, undo_button)  # 使用深灰色表示禁用状态
+    else:
+        pygame.draw.rect(screen, LIGHT_GRAY, undo_button)
+    pygame.draw.rect(screen, BLACK, undo_button, 2)
+    undo_text = GAME_FONT.render("悔棋", True, BLACK if game.can_undo() else DARK_GRAY)
+    undo_text_rect = undo_text.get_rect(center=undo_button.center)
+    screen.blit(undo_text, undo_text_rect)
+
     pygame.display.flip()
 
-    return main_menu_button, board_start_x, board_start_y, grid_size, bgm_checkbox_rect
+    return main_menu_button, undo_button, board_start_x, board_start_y, grid_size, bgm_checkbox_rect
 
 def choose_first_player():
     screen = get_screen()
