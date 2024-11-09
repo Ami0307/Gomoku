@@ -84,13 +84,13 @@ def score_line(line):
 
 def score_window(window):
     if 5 == sum(window):
-        return 100000  # 五连
+        return 100000  
     elif 4 == sum(window) and 0 in window:
-        return 10000   # 活四
+        return 10000   
     elif 3 == sum(window) and window.count(0) == 2:
-        return 1000    # 活三
+        return 1000    
     elif 2 == sum(window) and window.count(0) == 3:
-        return 100     # 活二
+        return 100    
     elif 1 == sum(window) and window.count(0) == 4:
-        return 10      # 活一
+        return 10      
     return 0

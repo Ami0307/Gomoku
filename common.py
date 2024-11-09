@@ -14,14 +14,36 @@ screen = None
 import pygame
 import pygame.mixer
 pygame.init()
+
+import os
+import sys
+
+def resource_path(relative_path):
+    """获取资源的绝对路径"""
+    if hasattr(sys, '_MEIPASS'):
+        # PyInstaller 创建临时文件夹，将路径存储在 _MEIPASS 中
+        base_path = sys._MEIPASS
+    else:
+        base_path = os.path.abspath(".")
+    
+    return os.path.join(base_path, relative_path)
+
+# 初始化声音
+pygame.mixer.init()
+
 def get_move_sound():
     return sound_enabled
 def get_bgm_enabled():
     return bgm_enabled
 def load_sound():
     global move_sound, bgm
-    move_sound = pygame.mixer.Sound("sounds/move.wav")
-    bgm = pygame.mixer.music.load("sounds/music.wav")  # 请确保你有一个背景音乐文件
+    try:
+        move_sound = pygame.mixer.Sound(resource_path("sounds/move.wav"))
+        pygame.mixer.music.load(resource_path("sounds/music.wav"))
+    except Exception as e:
+        print(f"加载声音文件失败: {e}")
+        # 设置默认值，防止程序崩溃
+        move_sound = None
 
 def play_bgm():
     if bgm_enabled:

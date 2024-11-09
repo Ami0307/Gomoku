@@ -1,6 +1,6 @@
 import pygame
 import sys
-from common import Game, SCREEN_SIZE, GRID_SIZE, BOARD_SIZE, MARGIN, toggle_fullscreen, get_screen, is_fullscreen, get_screen_size, bgm_enabled, sound_enabled, is_fullscreen, toggle_bgm, toggle_sound, toggle_fullscreen, get_bgm_enabled
+from common import Game, SCREEN_SIZE, GRID_SIZE, BOARD_SIZE, MARGIN, toggle_fullscreen, get_screen, is_fullscreen, get_screen_size, bgm_enabled, sound_enabled, is_fullscreen, toggle_bgm, toggle_sound, toggle_fullscreen, get_bgm_enabled, resource_path
 from network import start_network_game, get_available_rooms, start_discovery_service, check_for_new_connection, start_server
 from ai import ai_move
 import pygame.mixer
@@ -18,7 +18,7 @@ YELLOW = (255, 255, 0)
 GREEN = (0, 255, 0)
 BOARD_COLOR = (250, 214, 165)  # 添加这行，定义棋盘背景色
 # 字体设置
-FONT_PATH = "fonts/SimHei.ttf"
+FONT_PATH = resource_path("fonts/SimHei.ttf")
 FONT_SIZE = 32
 
 def load_font(size):
@@ -322,7 +322,7 @@ def show_available_rooms():
         title_rect = title_surface.get_rect(center=(screen_width // 2, screen_height // 6))
         screen.blit(title_surface, title_rect)
 
-        # 调整按钮尺寸
+        # 调整按钮寸
         button_width = 500  # 增加按钮宽度
         button_height = 60  # 增加按钮高度
         button_margin = 20
@@ -608,7 +608,7 @@ def draw_game_screen(screen, game, network_mode=False):
         rect = pygame.Rect(center_x - rect_size // 2, center_y - rect_size // 2, rect_size, rect_size)
         pygame.draw.rect(screen, color, rect, 3)
 
-    # 如果不能悔棋，将悔棋按钮设置为灰色
+    # 如果不能悔棋，将悔棋按钮��置为灰色
     if not game.can_undo():
         pygame.draw.rect(screen, DARK_GRAY, undo_button)  # 使用深灰色表示禁用状态
     else:
@@ -717,7 +717,7 @@ def settings_menu():
             pygame.draw.line(screen, check_color, (bgm_checkbox_rect.centerx, bgm_checkbox_rect.bottom - 5), (bgm_checkbox_rect.right - 5, bgm_checkbox_rect.top + 5), 3)
 
         bgm_label_font = pygame.font.Font(FONT_PATH, 24)
-        bgm_label_surface = bgm_label_font.render("背景音乐", True, BLACK)
+        bgm_label_surface = bgm_label_font.render("背景乐", True, BLACK)
         bgm_label_rect = bgm_label_surface.get_rect(midleft=(bgm_checkbox_rect.right + 10, bgm_checkbox_rect.centery))
         screen.blit(bgm_label_surface, bgm_label_rect)
 
